@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Skyscraper</title>
+    <style>
+        body {
+            background-color: #1a1a2e;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .dropdown-container {
+            margin-bottom: 30px;
+        }
+        
+        select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            background-color: #333;
+            color: white;
+            border: 2px solid #555;
+            cursor: pointer;
+        }
+        
+        .skyscraper {
+            position: relative;
+            width: 400px;
+            background-color: #0f3460;
+            border: 4px solid #16213e;
+            border-radius: 10px 10px 0 0;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7), 10px 10px 0 rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .roof {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background-color: #e94560;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .base {
+            width: 450px;
+            height: 20px;
+            background-color: #16213e;
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .cat-window {
+            width: 80px;
+            height: 80px;
+            background-color: #533483;
+            border: 3px solid #e94560;
+            border-radius: 5px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .cat-window:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.7);
+            z-index: 10;
+        }
+        
+        .cat-window img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* Add some random lights to make it look like a building at night */
+        .skyscraper::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+                        radial-gradient(circle at 30% 60%, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+                        radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 100px 100px;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cat Skyscraper</h1>
+    
+    <div class="dropdown-container">
+        <select id="cat-selector">
+            <option value="0">Select number of cats</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+            <option value="16">16</option>
+        </select>
+    </div>
+    
+    <div class="skyscraper" id="skyscraper">
+        <div class="roof"></div>
+        <!-- Cat windows will be inserted here -->
+    </div>
+    <div class="base"></div>
+
+    <script>
+        // Array of cat image URLs
+        const catImageUrls = [
+            "https://i.imgur.com/igBl39O.jpeg",
+            "https://i.imgur.com/QdvkUNh.jpeg",
+            "https://i.imgur.com/27uMxU9.jpeg",
+            "https://i.imgur.com/Y8pFjf1.jpeg",
+            "https://i.imgur.com/p3z7ABZ.jpeg",
+            "https://i.imgur.com/sXwlMDb.jpeg",
+            "https://i.imgur.com/oECVnkC.jpeg",
+            "https://i.imgur.com/ETweITC.jpeg",
+            "https://i.imgur.com/TuRFhFo.jpeg",
+            "https://i.imgur.com/sDpxRNh.jpeg",
+            "https://i.imgur.com/EnE6Eji.jpeg",
+            "https://i.imgur.com/tweR3qX.jpeg",
+            "https://i.imgur.com/DHACYbl.jpeg",
+            "https://i.imgur.com/9axY4Jf.jpeg",
+            "https://i.imgur.com/leLLRTy.jpeg",
+            "https://i.imgur.com/6WVd2k0.jpeg"
+        ];
+
+        document.getElementById('cat-selector').addEventListener('change', function() {
+            const numberOfCats = parseInt(this.value);
+            const skyscraper = document.getElementById('skyscraper');
+            
+            // Clear previous images
+            skyscraper.innerHTML = '';
+            
+            // Add the roof back
+            const roof = document.createElement('div');
+            roof.className = 'roof';
+            skyscraper.appendChild(roof);
+            
+            // Add the selected number of cat windows
+            for (let i = 0; i < numberOfCats; i++) {
+                const catWindow = document.createElement('div');
+                catWindow.className = 'cat-window';
+                
+                const img = document.createElement('img');
+                // Use real cat image URLs instead of placeholders
+                img.src = catImageUrls[i % catImageUrls.length]; // Cycling through the array if we need more than available
+                img.alt = `Cat ${i+1}`;
+                
+                catWindow.appendChild(img);
+                skyscraper.appendChild(catWindow);
+            }
+            
+            // Adjust skyscraper height based on number of cats
+            // Each row has 4 windows
+            const rows = Math.ceil(numberOfCats / 4);
+            const heightPerRow = 100; // 80px height + 10px gap + 10px padding
+            skyscraper.style.height = (rows * heightPerRow) + 'px';
+        });
+    </script>
+</body>
+</html>
