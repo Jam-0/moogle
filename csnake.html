@@ -34,6 +34,17 @@
             align-items: center;
         }
 
+        .score-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+            margin-bottom: 15px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
         #gameCanvas {
             border: 2px solid #00ff41;
             background: #0a3d2e;
@@ -143,9 +154,10 @@
 <body>
     <div class="game-container">
         <div class="game-area">
+            <div class="score-display" id="mainScore">0</div>
             <canvas id="gameCanvas" width="400" height="400"></canvas>
             <div class="controls">
-                Use Arrow Keys or WASD to move • Touch/Swipe on mobile
+                Use Arrow Keys or WASD to move • Touch/Swipe on mobile • Space to restart
             </div>
             <div class="game-over" id="gameOver" style="display: none;">
                 <div id="finalScore"></div>
@@ -207,6 +219,8 @@
                 this.snake = this.generateInitialSnake();
                 this.direction = {x: 0, y: 1};
                 this.nextDirection = {x: 0, y: 1};
+                this.inputBuffer = [];
+                this.bufferSize = 3;
                 this.food = this.generateFood();
                 this.bonusFood = null;
                 this.score = 0;
@@ -223,11 +237,13 @@
                 this.chainCount = 0;
                 this.lastDirection = {x: 0, y: 1};
                 
+                // Milestone tracking
+                this.milestonesShown = new Set();
+                
                 // Statistics
                 this.stats = this.loadStats();
                 
-                // Audio context
-                this.audioContext = null;
+                // Audio system
                 this.initAudio();
                 
                 this.bindEvents();
@@ -236,40 +252,33 @@
             }
             
             initAudio() {
-                try {
-                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                } catch(e) {
-                    console.log('Audio not supported');
-                }
+                this.sounds = {
+                    run: new Audio('Run.mp3'),
+                    four: new Audio('Four.mp3'),
+                    wicket: new Audio('Wicket.m4a')
+                };
+                
+                // Configure audio properties
+                Object.values(this.sounds).forEach(audio => {
+                    audio.volume = 0.3;
+                    audio.preload = 'auto';
+                });
             }
             
-            playTone(frequency, duration = 100) {
-                if (!this.audioContext) return;
-                
+            playSound(soundName) {
                 try {
-                    const oscillator = this.audioContext.createOscillator();
-                    const gainNode = this.audioContext.createGain();
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(this.audioContext.destination);
-                    
-                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-                    oscillator.type = 'square';
-                    
-                    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration / 1000);
-                    
-                    oscillator.start(this.audioContext.currentTime);
-                    oscillator.stop(this.audioContext.currentTime + duration / 1000);
-                } catch(e) {
-                    console.log('Audio playback failed');
-                }
+                    const audio = this.sounds[soundName];
+                    if (audio) {
+                        audio.currentTime = 0;
+                        audio.play().catch(() => {});
+                    }
+                } catch(e) {}
             }
             
             generateInitialSnake() {
                 const snake = [];
-                for (let i = 0; i < 15; i++) {
-                    snake.push({x: 10, y: 14 - i});
+                for (let i = 0; i < 7; i++) {
+                    snake.push({x: 10, y: 10 - i});
                 }
                 return snake;
             }
@@ -361,12 +370,20 @@
             
             bindEvents() {
                 document.addEventListener('keydown', (e) => {
+                    const key = e.key.toLowerCase();
+                    
+                    // Handle spacebar restart
+                    if (key === ' ' && this.gameOver) {
+                        this.restart();
+                        e.preventDefault();
+                        return;
+                    }
+                    
                     if (!this.gameRunning && !this.gameOver) {
                         this.start();
                         return;
                     }
                     
-                    const key = e.key.toLowerCase();
                     let newDirection = null;
                     
                     switch(key) {
@@ -389,6 +406,11 @@
                     }
                     
                     if (newDirection && !this.isOppositeDirection(newDirection)) {
+                        // Add to input buffer for 2-step collision forgiveness
+                        this.inputBuffer.push(newDirection);
+                        if (this.inputBuffer.length > this.bufferSize) {
+                            this.inputBuffer.shift();
+                        }
                         this.nextDirection = newDirection;
                         e.preventDefault();
                     }
@@ -447,28 +469,26 @@
             }
             
             restart() {
-                // Reset game state
                 this.snake = this.generateInitialSnake();
                 this.direction = {x: 0, y: 1};
                 this.nextDirection = {x: 0, y: 1};
+                this.inputBuffer = [];
                 this.food = this.generateFood();
                 this.bonusFood = null;
                 this.obstacles = [];
                 this.score = 0;
                 this.foodsEaten = 0;
                 this.gameSpeed = this.baseSpeed;
+                this.milestonesShown = new Set();
                 
-                // Reset canvas to original size
                 this.currentScale = 1;
                 this.canvas.width = this.baseCanvasSize;
                 this.canvas.height = this.baseCanvasSize;
                 this.cellSize = this.baseCanvasSize / this.gridSize;
                 
-                // Reset game flags
                 this.gameRunning = false;
                 this.gameOver = false;
                 
-                // Update UI
                 document.getElementById('gameOver').style.display = 'none';
                 this.updateDisplay();
                 this.updateProgress();
@@ -497,15 +517,9 @@
                 ];
                 
                 for (let milestone of milestones) {
-                    if (this.score >= milestone.score && (this.score - 10) < milestone.score) {
+                    if (this.score >= milestone.score && !this.milestonesShown.has(milestone.score)) {
+                        this.milestonesShown.add(milestone.score);
                         this.celebrate(milestone.name, milestone.color);
-                        
-                        if (milestone.score === 50) this.playTone(1200, 200);
-                        else if (milestone.score === 100) {
-                            this.playTone(440, 100);
-                            setTimeout(() => this.playTone(554, 100), 100);
-                            setTimeout(() => this.playTone(659, 200), 200);
-                        }
                         break;
                     }
                 }
@@ -550,31 +564,68 @@
             update() {
                 if (!this.gameRunning || this.gameOver) return;
                 
-                this.direction = {...this.nextDirection};
+                // Test current direction for collision
+                const currentHead = {...this.snake[0]};
+                const testHead = {...currentHead};
+                testHead.x += this.nextDirection.x;
+                testHead.y += this.nextDirection.y;
                 
+                const wouldCollide = (
+                    testHead.x < 0 || testHead.x >= this.gridSize || 
+                    testHead.y < 0 || testHead.y >= this.gridSize ||
+                    this.snake.some(segment => segment.x === testHead.x && segment.y === testHead.y) ||
+                    this.obstacles.some(obstacle => obstacle.x === testHead.x && obstacle.y === testHead.y)
+                );
+                
+                // Apply 2-step buffer collision forgiveness
+                if (wouldCollide && this.inputBuffer.length > 0) {
+                    let safeDirection = null;
+                    
+                    for (let i = this.inputBuffer.length - 1; i >= 0; i--) {
+                        const bufferDir = this.inputBuffer[i];
+                        if (!this.isOppositeDirection(bufferDir)) {
+                            const bufferTestHead = {...currentHead};
+                            bufferTestHead.x += bufferDir.x;
+                            bufferTestHead.y += bufferDir.y;
+                            
+                            const bufferCollides = (
+                                bufferTestHead.x < 0 || bufferTestHead.x >= this.gridSize || 
+                                bufferTestHead.y < 0 || bufferTestHead.y >= this.gridSize ||
+                                this.snake.some(segment => segment.x === bufferTestHead.x && segment.y === bufferTestHead.y) ||
+                                this.obstacles.some(obstacle => obstacle.x === bufferTestHead.x && obstacle.y === bufferTestHead.y)
+                            );
+                            
+                            if (!bufferCollides) {
+                                safeDirection = bufferDir;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    this.direction = safeDirection ? {...safeDirection} : {...this.nextDirection};
+                } else {
+                    this.direction = {...this.nextDirection};
+                }
+                
+                // Clear buffer after processing
+                this.inputBuffer = [];
+                
+                // Execute move
                 const head = {...this.snake[0]};
                 head.x += this.direction.x;
                 head.y += this.direction.y;
                 
-                // Check collisions
-                if (head.x < 0 || head.x >= this.gridSize || head.y < 0 || head.y >= this.gridSize) {
-                    this.endGame();
-                    return;
-                }
-                
-                if (this.snake.some(segment => segment.x === head.x && segment.y === head.y)) {
-                    this.endGame();
-                    return;
-                }
-                
-                if (this.obstacles.some(obstacle => obstacle.x === head.x && obstacle.y === head.y)) {
+                // Final collision check
+                if (head.x < 0 || head.x >= this.gridSize || head.y < 0 || head.y >= this.gridSize ||
+                    this.snake.some(segment => segment.x === head.x && segment.y === head.y) ||
+                    this.obstacles.some(obstacle => obstacle.x === head.x && obstacle.y === head.y)) {
                     this.endGame();
                     return;
                 }
                 
                 this.snake.unshift(head);
                 
-                // Check food collision
+                // Food collision logic
                 let foodEaten = false;
                 let pointsGained = 1;
                 
@@ -600,7 +651,7 @@
                     this.clearObstacles();
                     this.checkObstacleSpawn();
                     this.checkMilestone();
-                    this.playTone(pointsGained === 4 ? 1200 : 800, 50);
+                    this.playSound(pointsGained === 4 ? 'four' : 'run');
                 } else {
                     this.snake.pop();
                 }
@@ -613,10 +664,7 @@
                 this.gameRunning = false;
                 this.gameOver = true;
                 
-                this.playTone(220, 300);
-                setTimeout(() => this.playTone(196, 300), 300);
-                setTimeout(() => this.playTone(175, 500), 600);
-                
+                this.playSound('wicket');
                 this.updateStats();
                 
                 document.getElementById('finalScore').textContent = `Final Score: ${this.score}`;
@@ -683,6 +731,7 @@
             }
             
             updateDisplay() {
+                document.getElementById('mainScore').textContent = this.score;
                 document.getElementById('currentScore').textContent = this.score;
                 document.getElementById('highScore').textContent = this.stats.highScore;
                 document.getElementById('averageScore').textContent = this.stats.averageScore;
