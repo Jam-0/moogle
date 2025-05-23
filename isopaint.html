@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isometric Pixel Art Editor</title>
+    <style>
+        :root {
+            --bg-primary: #1e1e1e;
+            --bg-secondary: #252526;
+            --bg-tertiary: #333333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #cccccc;
+            --accent: #0078d4;
+            --accent-hover: #0086f0;
+            --border: #3f3f3f;
+            --success: #13a10e;
+            --danger: #d83b01;
+            --canvas-bg: #2d2d2d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 400;
+        }
+
+        .app-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            width: 60px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .tool-btn {
+            width: 42px;
+            height: 42px;
+            margin: 8px auto;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .tool-btn:hover {
+            background-color: var(--accent);
+        }
+
+        .tool-btn.active {
+            background-color: var(--accent);
+            border-color: var(--accent-hover);
+        }
+
+        .separator {
+            height: 1px;
+            background-color: var(--border);
+            margin: 8px 10px;
+        }
+
+        .sidebar {
+            width: 240px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            border-bottom: 1px solid var(--border);
+            padding: 10px;
+        }
+
+        .sidebar-section h2 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+        }
+
+        .color-swatch {
+            width: 100%;
+            padding-bottom: 100%;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .color-swatch.active {
+            border: 2px solid var(--text-primary);
+        }
+
+        .layer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .layer-item {
+            display: flex;
+            align-items: center;
+            padding: 6px;
+            border-radius: 4px;
+            background-color: var(--bg-tertiary);
+            cursor: pointer;
+        }
+
+        .layer-item.active {
+            background-color: var(--accent);
+        }
+
+        .layer-visibility {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .layer-name {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        .input-group {
+            margin-bottom: 8px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        input[type="number"], select {
+            width: 100%;
+            padding: 4px 8px;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 6px 12px;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        button:hover {
+            background-color: var(--accent);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-group button {
+            flex: 1;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background-color: var(--canvas-bg);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #mainCanvas {
+            display: block;
+            background-color: white;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #gridCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .status-bar {
+            height: 24px;
+            background-color: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .status-bar-item {
+            margin-right: 16px;
+        }
+
+        .tool-options {
+            padding: 10px;
+            background-color: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            position: absolute;
+            bottom: 24px;
+            left: 300px;
+            right: 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tool-option {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tool-option label {
+            font-size: 0.85rem;
+        }
+
+        .tool-option input,
+        .tool-option select {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        /* Hide tool options by default */
+        .tool-option {
+            display: none;
+        }
+
+        /* Show relevant tool options based on active tool */
+        .tool-active-pencil .option-size,
+        .tool-active-eraser .option-size,
+        .tool-active-line .option-line-width,
+        .tool-active-line .option-snap-angle,
+        .tool-active-shape .option-shape-type,
+        .tool-active-shape .option-fill {
+            display: flex;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 200px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .sidebar {
+                display: none;
+            }
+        }
+
+        /* Context menu */
+        .context-menu {
+            position: absolute;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .context-menu-item:hover {
+            background-color: var(--accent);
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background-color: var(--border);
+            margin: 4px 0;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background-color: var(--bg-secondary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Isometric Pixel Art Editor</h1>
+        <div class="btn-group">
+            <button id="newBtn">New</button>
+            <button id="saveBtn">Save</button>
+            <button id="exportBtn">Export</button>
+        </div>
+    </div>
+    
+    <div class="app-container">
+        <div class="toolbar">
+            <button class="tool-btn active" id="pencilTool" title="Pencil (P)">✏️</button>
+            <button class="tool-btn" id="eraserTool" title="Eraser (E)">🧹</button>
+            <button class="tool-btn" id="eyedropperTool" title="Color Picker (I)">👁️</button>
+            <button class="tool-btn" id="lineTool" title="Line (L)">📏</button>
+            <button class="tool-btn" id="fillTool" title="Fill (F)">🪣</button>
+            
+            <div class="separator"></div>
+            
+            <button class="tool-btn" id="selectTool" title="Selection (S)">◻️</button>
+            <button class="tool-btn" id="moveTool" title="Move (M)">✋</button>
+            
+            <div class="separator"></div>
+            
+            <button class="tool-btn" id="rectangleTool" title="Rectangle (R)">🔲</button>
+            <button class="tool-btn" id="isoCubeTool" title="Isometric Cube (C)">📦</button>
+            
+            <div class="separator"></div>
+            
+            <button class="tool-btn" id="gridToggle" title="Toggle Grid (G)">📐</button>
+            <button class="tool-btn" id="zoomInTool" title="Zoom In (+)">🔍+</button>
+            <button class="tool-btn" id="zoomOutTool" title="Zoom Out (-)">🔍-</button>
+            <button class="tool-btn" id="handTool" title="Pan (Space)">👋</button>
+        </div>
+        
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h2>Color</h2>
+                <div class="color-palette" id="colorPalette"></div>
+                <div class="input-group" style="margin-top: 10px;">
+                    <label for="colorPicker">Custom Color</label>
+                    <input type="color" id="colorPicker" style="width: 100%;">
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h2>Layers</h2>
+                <div class="layer-list" id="layerList"></div>
+                <div style="margin-top: 8px;">
+                    <button id="addLayerBtn">Add Layer</button>
+                    <button id="removeLayerBtn">Remove</button>
+                </div>
+                <div class="input-group" style="margin-top: 8px;">
+                    <label for="layerOpacity">Opacity</label>
+                    <input type="range" id="layerOpacity" min="0" max="100" value="100">
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h2>Grid Settings</h2>
+                <div class="input-group">
+                    <label for="gridSize">Grid Size</label>
+                    <select id="gridSize">
+                        <option value="32,16">32x16</option>
+                        <option value="64,32">64x32</option>
+                        <option value="48,24">48x24</option>
+                        <option value="16,8">16x8</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="gridOpacity">Grid Opacity</label>
+                    <input type="range" id="gridOpacity" min="0" max="100" value="50">
+                </div>
+                <div class="input-group">
+                    <label for="gridColor">Grid Color</label>
+                    <input type="color" id="gridColor" value="#888888" style="width: 100%;">
+                </div>
+                <div class="input-group">
+                    <label for="gridType">Grid Type</label>
+                    <select id="gridType">
+                        <option value="isometric">Isometric</option>
+                        <option value="diamond">Diamond</option>
+                        <option value="square">Square</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h2>Canvas Settings</h2>
+                <div class="input-group">
+                    <label for="canvasWidth">Width (px)</label>
+                    <input type="number" id="canvasWidth" value="800" min="32" max="2048">
+                </div>
+                <div class="input-group">
+                    <label for="canvasHeight">Height (px)</label>
+                    <input type="number" id="canvasHeight" value="600" min="32" max="2048">
+                </div>
+                <div class="input-group">
+                    <label for="bgColor">Background Color</label>
+                    <input type="color" id="bgColor" value="#ffffff" style="width: 100%;">
+                </div>
+                <button id="resizeCanvas" style="margin-top: 8px;">Apply Changes</button>
+            </div>
+        </div>
+        
+        <div class="canvas-container" id="canvasContainer">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <canvas id="mainCanvas"></canvas>
+                <canvas id="gridCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tool-options">
+        <div class="tool-option option-size">
+            <label for="brushSize">Size:</label>
+            <input type="number" id="brushSize" min="1" max="32" value="1" style="width: 50px;">
+        </div>
+        <div class="tool-option option-line-width">
+            <label for="lineWidth">Width:</label>
+            <input type="number" id="lineWidth" min="1" max="10" value="1" style="width: 50px;">
+        </div>
+        <div class="tool-option option-snap-angle">
+            <label for="snapAngle">Snap:</label>
+            <select id="snapAngle">
+                <option value="iso">Isometric</option>
+                <option value="ortho">Orthogonal</option>
+                <option value="free">Free</option>
+            </select>
+        </div>
+        <div class="tool-option option-shape-type">
+            <label for="shapeType">Type:</label>
+            <select id="shapeType">
+                <option value="rectangle">Rectangle</option>
+                <option value="isocube">Iso Cube</option>
+                <option value="platform">Platform</option>
+                <option value="stairs">Stairs</option>
+            </select>
+        </div>
+        <div class="tool-option option-fill">
+            <label for="fillShape">Fill:</label>
+            <input type="checkbox" id="fillShape" checked>
+        </div>
+    </div>
+    
+    <div class="status-bar">
+        <div class="status-bar-item" id="positionDisplay">X: 0, Y: 0</div>
+        <div class="status-bar-item" id="zoomDisplay">Zoom: 100%</div>
+        <div class="status-bar-item" id="canvasSizeDisplay">800x600</div>
+        <div class="status-bar-item" id="currentTool">Tool: Pencil</div>
+    </div>
+    
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" id="ctxCut">Cut</div>
+        <div class="context-menu-item" id="ctxCopy">Copy</div>
+        <div class="context-menu-item" id="ctxPaste">Paste</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="ctxSelectAll">Select All</div>
+        <div class="context-menu-item" id="ctxDeselect">Deselect</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="ctxFlipH">Flip Horizontal</div>
+        <div class="context-menu-item" id="ctxFlipV">Flip Vertical</div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Main application class
+        class IsometricPixelEditor {
+            constructor() {
+                // Initialize canvas elements
+                this.mainCanvas = document.getElementById('mainCanvas');
+                this.gridCanvas = document.getElementById('gridCanvas');
+                this.mainCtx = this.mainCanvas.getContext('2d', { willReadFrequently: true });
+                this.gridCtx = this.gridCanvas.getContext('2d');
+                
+                // App state
+                this.state = {
+                    tool: 'pencil',
+                    isDrawing: false,
+                    lastX: 0,
+                    lastY: 0,
+                    currentX: 0,
+                    currentY: 0,
+                    brushSize: 1,
+                    lineWidth: 1,
+                    snapAngle: 'iso',
+                    color: '#000000',
+                    secondaryColor: '#ffffff',
+                    zoom: 1,
+                    panOffset: { x: 0, y: 0 },
+                    gridVisible: true,
+                    gridSize: { width: 32, height: 16 },
+                    gridOpacity: 0.5,
+                    gridColor: '#888888',
+                    gridType: 'isometric',
+                    canvasSize: { width: 800, height: 600 },
+                    backgroundColor: '#ffffff',
+                    selection: null,
+                    clipboard: null,
+                    layers: [],
+                    activeLayer: 0,
+                    dragStart: null,
+                    isPanning: false,
+                };
+                
+                // Initialize palette
+                this.palette = [
+                    '#000000', '#ffffff', '#ff0000', '#00ff00', 
+                    '#0000ff', '#ffff00', '#00ffff', '#ff00ff',
+                    '#880000', '#008800', '#000088', '#888800',
+                    '#008888', '#880088', '#888888', '#cccccc'
+                ];
+                
+                // Initialize history for undo/redo
+                this.history = {
+                    states: [],
+                    currentIndex: -1,
+                    maxStates: 50
+                };
+                
+                // Initialize layers
+                this.initializeLayers();
+                
+                // Initialize the canvas
+                this.initializeCanvas();
+                
+                // Initialize UI elements
+                this.initializeUI();
+                
+                // Initialize event listeners
+                this.initializeEventListeners();
+                
+                // Initial render
+                this.drawGrid();
+                this.renderCanvas();
+                this.saveState();
+            }
+            
+            initializeLayers() {
+                // Create initial background layer
+                const backgroundLayer = {
+                    id: this.generateId(),
+                    name: 'Background',
+                    visible: true,
+                    opacity: 1,
+                    canvas: document.createElement('canvas')
+                };
+                
+                backgroundLayer.canvas.width = this.state.canvasSize.width;
+                backgroundLayer.canvas.height = this.state.canvasSize.height;
+                const ctx = backgroundLayer.canvas.getContext('2d');
+                ctx.fillStyle = this.state.backgroundColor;
+                ctx.fillRect(0, 0, backgroundLayer.canvas.width, backgroundLayer.canvas.height);
+                
+                // Create initial layer
+                const layer1 = {
+                    id: this.generateId(),
+                    name: 'Layer 1',
+                    visible: true,
+                    opacity: 1,
+                    canvas: document.createElement('canvas')
+                };
+                
+                layer1.canvas.width = this.state.canvasSize.width;
+                layer1.canvas.height = this.state.canvasSize.height;
+                
+                this.state.layers = [backgroundLayer, layer1];
+                this.state.activeLayer = 1; // Default to Layer 1, not the background
+                
+                this.updateLayersList();
+            }
+            
+            initializeCanvas() {
+                // Set canvas size
+                this.mainCanvas.width = this.state.canvasSize.width;
+                this.mainCanvas.height = this.state.canvasSize.height;
+                this.gridCanvas.width = this.state.canvasSize.width;
+                this.gridCanvas.height = this.state.canvasSize.height;
+                
+                // Enable image-rendering for pixel art
+                this.mainCanvas.style.imageRendering = 'pixelated';
+                
+                // Update canvas display size based on zoom
+                this.updateCanvasScale();
+            }
+            
+            updateCanvasScale() {
+                const wrapper = document.getElementById('canvasWrapper');
+                const scale = this.state.zoom;
+                
+                wrapper.style.transform = `scale(${scale})`;
+                wrapper.style.transformOrigin = 'center';
+                
+                // Update zoom display
+                document.getElementById('zoomDisplay').textContent = `Zoom: ${Math.round(scale * 100)}%`;
+            }
+            
+            initializeUI() {
+                // Create color palette UI
+                const palette = document.getElementById('colorPalette');
+                palette.innerHTML = '';
+                
+                this.palette.forEach((color, index) => {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch';
+                    swatch.style.backgroundColor = color;
+                    swatch.dataset.color = color;
+                    
+                    if (color === this.state.color) {
+                        swatch.classList.add('active');
+                    }
+                    
+                    swatch.addEventListener('click', (e) => {
+                        // Remove active class from all swatches
+                        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                        // Add active class to clicked swatch
+                        swatch.classList.add('active');
+                        // Update color
+                        this.state.color = color;
+                        document.getElementById('colorPicker').value = color;
+                    });
+                    
+                    palette.appendChild(swatch);
+                });
+                
+                // Initialize color picker
+                document.getElementById('colorPicker').value = this.state.color;
+                
+                // Update layer list
+                this.updateLayersList();
+                
+                // Update grid settings
+                document.getElementById('gridSize').value = `${this.state.gridSize.width},${this.state.gridSize.height}`;
+                document.getElementById('gridOpacity').value = this.state.gridOpacity * 100;
+                document.getElementById('gridColor').value = this.state.gridColor;
+                document.getElementById('gridType').value = this.state.gridType;
+                
+                // Update canvas settings
+                document.getElementById('canvasWidth').value = this.state.canvasSize.width;
+                document.getElementById('canvasHeight').value = this.state.canvasSize.height;
+                document.getElementById('bgColor').value = this.state.backgroundColor;
+                
+                // Update canvas size display
+                document.getElementById('canvasSizeDisplay').textContent = `${this.state.canvasSize.width}x${this.state.canvasSize.height}`;
+            }
+            
+            updateLayersList() {
+                const layerList = document.getElementById('layerList');
+                layerList.innerHTML = '';
+                
+                this.state.layers.forEach((layer, index) => {
+                    const layerItem = document.createElement('div');
+                    layerItem.className = 'layer-item';
+                    if (index === this.state.activeLayer) {
+                        layerItem.classList.add('active');
+                    }
+                    
+                    const visibility = document.createElement('span');
+                    visibility.className = 'layer-visibility';
+                    visibility.textContent = layer.visible ? '👁️' : '👁️‍🗨️';
+                    visibility.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        layer.visible = !layer.visible;
+                        this.updateLayersList();
+                        this.renderCanvas();
+                    });
+                    
+                    const name = document.createElement('span');
+                    name.className = 'layer-name';
+                    name.textContent = layer.name;
+                    
+                    layerItem.appendChild(visibility);
+                    layerItem.appendChild(name);
+                    
+                    layerItem.addEventListener('click', () => {
+                        this.state.activeLayer = index;
+                        this.updateLayersList();
+                        document.getElementById('layerOpacity').value = layer.opacity * 100;
+                    });
+                    
+                    layerList.appendChild(layerItem);
+                });
+            }
+            
+            initializeEventListeners() {
+                // Canvas event listeners
+                this.mainCanvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                this.mainCanvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                this.mainCanvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                this.mainCanvas.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
+                this.mainCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+                
+                // Prevent default touch behavior to avoid scrolling
+                this.mainCanvas.addEventListener('touchstart', (e) => e.preventDefault());
+                this.mainCanvas.addEventListener('touchmove', (e) => e.preventDefault());
+                this.mainCanvas.addEventListener('touchend', (e) => e.preventDefault());
+                
+                // Touch events for mobile support
+                this.mainCanvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
+                this.mainCanvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
+                this.mainCanvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
+                
+                // Zoom event listeners
+                document.getElementById('zoomInTool').addEventListener('click', () => this.zoom(0.25));
+                document.getElementById('zoomOutTool').addEventListener('click', () => this.zoom(-0.25));
+                this.mainCanvas.addEventListener('wheel', this.handleWheel.bind(this));
+                
+                // Tool selection
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        if (btn.id === 'gridToggle') {
+                            this.toggleGrid();
+                            return;
+                        }
+                        
+                        if (btn.id === 'zoomInTool' || btn.id === 'zoomOutTool') {
+                            return; // These are handled separately
+                        }
+                        
+                        // Remove active class from all tools
+                        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                        // Add active class to clicked tool
+                        btn.classList.add('active');
+                        
+                        // Set active tool
+                        const toolId = btn.id.replace('Tool', '');
+                        this.setActiveTool(toolId);
+                    });
+                });
+                
+                // Color picker event
+                document.getElementById('colorPicker').addEventListener('input', (e) => {
+                    this.state.color = e.target.value;
+                    this.updateColorPalette();
+                });
+                
+                // Layer opacity event
+                document.getElementById('layerOpacity').addEventListener('input', (e) => {
+                    const layer = this.state.layers[this.state.activeLayer];
+                    layer.opacity = parseInt(e.target.value) / 100;
+                    this.renderCanvas();
+                });
+                
+                // Layer management
+                document.getElementById('addLayerBtn').addEventListener('click', this.addLayer.bind(this));
+                document.getElementById('removeLayerBtn').addEventListener('click', this.removeLayer.bind(this));
+                
+                // Grid settings
+                document.getElementById('gridSize').addEventListener('change', (e) => {
+                    const [width, height] = e.target.value.split(',').map(Number);
+                    this.state.gridSize = { width, height };
+                    this.drawGrid();
+                });
+                
+                document.getElementById('gridOpacity').addEventListener('input', (e) => {
+                    this.state.gridOpacity = parseInt(e.target.value) / 100;
+                    this.drawGrid();
+                });
+                
+                document.getElementById('gridColor').addEventListener('input', (e) => {
+                    this.state.gridColor = e.target.value;
+                    this.drawGrid();
+                });
+                
+                document.getElementById('gridType').addEventListener('change', (e) => {
+                    this.state.gridType = e.target.value;
+                    this.drawGrid();
+                });
+                
+                // Canvas settings
+                document.getElementById('resizeCanvas').addEventListener('click', this.resizeCanvas.bind(this));
+                document.getElementById('bgColor').addEventListener('input', (e) => {
+                    if (this.state.layers.length > 0) {
+                        this.state.backgroundColor = e.target.value;
+                        const bgLayer = this.state.layers[0];
+                        const ctx = bgLayer.canvas.getContext('2d');
+                        ctx.fillStyle = this.state.backgroundColor;
+                        ctx.fillRect(0, 0, bgLayer.canvas.width, bgLayer.canvas.height);
+                        this.renderCanvas();
+                    }
+                });
+                
+                // File operations
+                document.getElementById('newBtn').addEventListener('click', this.newProject.bind(this));
+                document.getElementById('saveBtn').addEventListener('click', this.saveProject.bind(this));
+                document.getElementById('exportBtn').addEventListener('click', this.exportImage.bind(this));
+                
+                // Keyboard shortcuts
+                window.addEventListener('keydown', this.handleKeyDown.bind(this));
+                
+                // Tool option events
+                document.getElementById('brushSize').addEventListener('input', (e) => {
+                    this.state.brushSize = parseInt(e.target.value);
+                });
+                
+                document.getElementById('lineWidth').addEventListener('input', (e) => {
+                    this.state.lineWidth = parseInt(e.target.value);
+                });
+                
+                document.getElementById('snapAngle').addEventListener('change', (e) => {
+                    this.state.snapAngle = e.target.value;
+                });
+                
+                // Context menu
+                document.getElementById('ctxCut').addEventListener('click', this.cutSelection.bind(this));
+                document.getElementById('ctxCopy').addEventListener('click', this.copySelection.bind(this));
+                document.getElementById('ctxPaste').addEventListener('click', this.pasteSelection.bind(this));
+                document.getElementById('ctxSelectAll').addEventListener('click', this.selectAll.bind(this));
+                document.getElementById('ctxDeselect').addEventListener('click', this.clearSelection.bind(this));
+                document.getElementById('ctxFlipH').addEventListener('click', () => this.flipSelection('horizontal'));
+                document.getElementById('ctxFlipV').addEventListener('click', () => this.flipSelection('vertical'));
+                
+                // Hide context menu on click outside
+                document.addEventListener('click', () => {
+                    document.getElementById('contextMenu').style.display = 'none';
+                });
+            }
+            
+            setActiveTool(tool) {
+                this.state.tool = tool.toLowerCase();
+                document.getElementById('currentTool').textContent = `Tool: ${tool.charAt(0).toUpperCase() + tool.slice(1)}`;
+                
+                // Update body class for tool-specific options
+                document.body.className = document.body.className.replace(/tool-active-\w+/g, '');
+                document.body.classList.add(`tool-active-${this.state.tool}`);
+            }
+            
+            toggleGrid() {
+                this.state.gridVisible = !this.state.gridVisible;
+                const gridBtn = document.getElementById('gridToggle');
+                
+                if (this.state.gridVisible) {
+                    gridBtn.classList.add('active');
+                    this.gridCanvas.style.display = 'block';
+                } else {
+                    gridBtn.classList.remove('active');
+                    this.gridCanvas.style.display = 'none';
+                }
+                
+                this.drawGrid();
+            }
+            
+            drawGrid() {
+                if (!this.state.gridVisible) {
+                    this.gridCanvas.style.display = 'none';
+                    return;
+                }
+                
+                this.gridCanvas.style.display = 'block';
+                const ctx = this.gridCtx;
+                const { width, height } = this.state.canvasSize;
+                const { width: cellWidth, height: cellHeight } = this.state.gridSize;
+                
+                // Clear previous grid
+                ctx.clearRect(0, 0, width, height);
+                
+                // Set grid style
+                ctx.strokeStyle = this.state.gridColor;
+                ctx.globalAlpha = this.state.gridOpacity;
+                ctx.lineWidth = 1;
+                
+                if (this.state.gridType === 'isometric') {
+                    // Draw isometric grid
+                    for (let x = 0; x < width + height; x += cellWidth) {
+                        // Draw lines from top to bottom-right
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x - height, height);
+                        ctx.stroke();
+                        
+                        // Draw lines from left to bottom-right
+                        ctx.beginPath();
+                        ctx.moveTo(0, x / 2);
+                        ctx.lineTo(width, (x / 2) + (width / 2));
+                        ctx.stroke();
+                    }
+                } else if (this.state.gridType === 'diamond') {
+                    // Draw diamond grid
+                    for (let x = 0; x < width + height; x += cellWidth) {
+                        // Draw lines from top to bottom-right
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x - height, height);
+                        ctx.stroke();
+                        
+                        // Draw lines from top to bottom-left
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x + height, height);
+                        ctx.stroke();
+                    }
+                } else if (this.state.gridType === 'square') {
+                    // Draw square grid
+                    for (let x = 0; x < width; x += cellWidth) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, height);
+                        ctx.stroke();
+                    }
+                    
+                    for (let y = 0; y < height; y += cellHeight) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(width, y);
+                        ctx.stroke();
+                    }
+                }
+                
+                // Reset alpha
+                ctx.globalAlpha = 1;
+            }
+            
+            renderCanvas() {
+                // Clear the main canvas
+                this.mainCtx.clearRect(0, 0, this.state.canvasSize.width, this.state.canvasSize.height);
+                
+                // Draw each visible layer
+                this.state.layers.forEach(layer => {
+                    if (layer.visible) {
+                        this.mainCtx.globalAlpha = layer.opacity;
+                        this.mainCtx.drawImage(layer.canvas, 0, 0);
+                    }
+                });
+                
+                // Reset alpha
+                this.mainCtx.globalAlpha = 1;
+                
+                // Draw selection if active
+                if (this.state.selection) {
+                    const { x, y, width, height } = this.state.selection;
+                    
+                    // Draw dashed rectangle
+                    this.mainCtx.setLineDash([5, 5]);
+                    this.mainCtx.strokeStyle = '#0078d4';
+                    this.mainCtx.lineWidth = 1;
+                    this.mainCtx.strokeRect(x, y, width, height);
+                    this.mainCtx.setLineDash([]);
+                }
+            }
+            
+            handleMouseDown(e) {
+                if (e.button === 2) {
+                    // Right click - show context menu
+                    this.showContextMenu(e);
+                    return;
+                }
+                
+                // Get mouse position relative to canvas
+                const rect = this.mainCanvas.getBoundingClientRect();
+                const x = Math.floor((e.clientX - rect.left) / this.state.zoom);
+                const y = Math.floor((e.clientY - rect.top) / this.state.zoom);
+                
+                this.state.isDrawing = true;
+                this.state.lastX = x;
+                this.state.lastY = y;
+                
+                // Handle different tools
+                switch (this.state.tool) {
+                    case 'pencil':
+                        this.drawPixel(x, y);
+                        break;
+                    case 'eraser':
+                        this.erasePixel(x, y);
+                        break;
+                    case 'eyedropper':
+                        this.pickColor(x, y);
+                        break;
+                    case 'fill':
+                        this.fillArea(x, y);
+                        break;
+                    case 'select':
+                        this.startSelection(x, y);
+                        break;
+                    case 'move':
+                        this.startMove(x, y);
+                        break;
+                    case 'rectangle':
+                    case 'isocube':
+                        this.startShapeDraw(x, y);
+                        break;
+                    case 'hand':
+                        this.startPan(e.clientX, e.clientY);
+                        break;
+                }
+            }
+            
+            handleMouseMove(e) {
+                // Update position display
+                const rect = this.mainCanvas.getBoundingClientRect();
+                const x = Math.floor((e.clientX - rect.left) / this.state.zoom);
+                const y = Math.floor((e.clientY - rect.top) / this.state.zoom);
+                
+                document.getElementById('positionDisplay').textContent = `X: ${x}, Y: ${y}`;
+                
+                if (!this.state.isDrawing && this.state.tool !== 'hand') return;
+                
+                if (this.state.isPanning) {
+                    this.updatePan(e.clientX, e.clientY);
+                    return;
+                }
+                
+                // Handle different tools
+                switch (this.state.tool) {
+                    case 'pencil':
+                        this.drawLine(this.state.lastX, this.state.lastY, x, y);
+                        break;
+                    case 'eraser':
+                        this.eraseLine(this.state.lastX, this.state.lastY, x, y);
+                        break;
+                    case 'line':
+                        this.previewLine(this.state.lastX, this.state.lastY, x, y);
+                        break;
+                    case 'select':
+                        this.updateSelection(x, y);
+                        break;
+                    case 'move':
+                        this.updateMove(x, y);
+                        break;
+                    case 'rectangle':
+                    case 'isocube':
+                        this.updateShapeDraw(x, y);
+                        break;
+                }
+                
+                this.state.currentX = x;
+                this.state.currentY = y;
+            }
+            
+            handleMouseUp() {
+                if (!this.state.isDrawing && !this.state.isPanning) return;
+                
+                if (this.state.isPanning) {
+                    this.endPan();
+                    return;
+                }
+                
+                switch (this.state.tool) {
+                    case 'line':
+                        this.commitLine(this.state.lastX, this.state.lastY, this.state.currentX, this.state.currentY);
+                        break;
+                    case 'select':
+                        this.finalizeSelection();
+                        break;
+                    case 'rectangle':
+                    case 'isocube':
+                        this.finalizeShape();
+                        break;
+                }
+                
+                this.state.isDrawing = false;
+                this.saveState();
+            }
+            
+            handleMouseLeave() {
+                if (this.state.isDrawing) {
+                    this.handleMouseUp();
+                }
+            }
+            
+            handleTouchStart(e) {
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                        button: 0
+                    });
+                    this.handleMouseDown(mouseEvent);
+                } else if (e.touches.length === 2) {
+                    // Pinch-to-zoom
+                    this.startPinchZoom(e);
+                }
+            }
+            
+            handleTouchMove(e) {
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.handleMouseMove(mouseEvent);
+                } else if (e.touches.length === 2) {
+                    // Update pinch-to-zoom
+                    this.updatePinchZoom(e);
+                }
+            }
+            
+            handleTouchEnd(e) {
+                const mouseEvent = new MouseEvent('mouseup');
+                this.handleMouseUp(mouseEvent);
+                
+                if (e.touches.length < 2) {
+                    this.endPinchZoom();
+                }
+            }
+            
+            handleWheel(e) {
+                e.preventDefault();
+                
+                // Determine zoom direction
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                this.zoom(delta);
+            }
+            
+            handleKeyDown(e) {
+                // Handle keyboard shortcuts
+                if (e.ctrlKey || e.metaKey) {
+                    switch (e.key.toLowerCase()) {
+                        case 'z':
+                            if (e.shiftKey) {
+                                this.redo();
+                            } else {
+                                this.undo();
+                            }
+                            e.preventDefault();
+                            break;
+                        case 'y':
+                            this.redo();
+                            e.preventDefault();
+                            break;
+                        case 'c':
+                            if (this.state.selection) {
+                                this.copySelection();
+                                e.preventDefault();
+                            }
+                            break;
+                        case 'x':
+                            if (this.state.selection) {
+                                this.cutSelection();
+                                e.preventDefault();
+                            }
+                            break;
+                        case 'v':
+                            this.pasteSelection();
+                            e.preventDefault();
+                            break;
+                        case 'a':
+                            this.selectAll();
+                            e.preventDefault();
+                            break;
+                        case 's':
+                            this.saveProject();
+                            e.preventDefault();
+                            break;
+                        case 'e':
+                            this.exportImage();
+                            e.preventDefault();
+                            break;
+                    }
+                } else {
+                    // Tool shortcuts
+                    switch (e.key.toLowerCase()) {
+                        case 'p':
+                            document.getElementById('pencilTool').click();
+                            break;
+                        case 'e':
+                            document.getElementById('eraserTool').click();
+                            break;
+                        case 'b':
+                            document.getElementById('fillTool').click();
+                            break;
+                        case 'i':
+                            document.getElementById('eyedropperTool').click();
+                            break;
+                        case 'l':
+                            document.getElementById('lineTool').click();
+                            break;
+                        case 's':
+                            document.getElementById('selectTool').click();
+                            break;
+                        case 'm':
+                            document.getElementById('moveTool').click();
+                            break;
+                        case 'r':
+                            document.getElementById('rectangleTool').click();
+                            break;
+                        case 'c':
+                            document.getElementById('isoCubeTool').click();
+                            break;
+                        case 'g':
+                            document.getElementById('gridToggle').click();
+                            break;
+                        case '+':
+                        case '=':
+                            this.zoom(0.1);
+                            break;
+                        case '-':
+                            this.zoom(-0.1);
+                            break;
+                        case ' ':
+                            if (!e.repeat) {
+                                this.tempActivateHandTool();
+                            }
+                            break;
+                        case 'escape':
+                            this.clearSelection();
+                            break;
+                    }
+                }
+            }
+            
+            showContextMenu(e) {
+                e.preventDefault();
+                const menu = document.getElementById('contextMenu');
+                menu.style.left = `${e.clientX}px`;
+                menu.style.top = `${e.clientY}px`;
+                menu.style.display = 'block';
+            }
+            
+            // Drawing operations
+            drawPixel(x, y) {
+                if (x < 0 || y < 0 || x >= this.state.canvasSize.width || y >= this.state.canvasSize.height) return;
+                
+                const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                ctx.fillStyle = this.state.color;
+                
+                // Draw based on brush size
+                const size = this.state.brushSize;
+                if (size === 1) {
+                    ctx.fillRect(x, y, 1, 1);
+                } else {
+                    const offset = Math.floor(size / 2);
+                    ctx.fillRect(x - offset, y - offset, size, size);
+                }
+                
+                this.renderCanvas();
+            }
+            
+            erasePixel(x, y) {
+                if (x < 0 || y < 0 || x >= this.state.canvasSize.width || y >= this.state.canvasSize.height) return;
+                
+                const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                ctx.clearRect(x, y, this.state.brushSize, this.state.brushSize);
+                this.renderCanvas();
+            }
+            
+            drawLine(x0, y0, x1, y1) {
+                // Bresenham's line algorithm
+                const dx = Math.abs(x1 - x0);
+                const dy = Math.abs(y1 - y0);
+                const sx = x0 < x1 ? 1 : -1;
+                const sy = y0 < y1 ? 1 : -1;
+                let err = dx - dy;
+                
+                while (true) {
+                    this.drawPixel(x0, y0);
+                    
+                    if (x0 === x1 && y0 === y1) break;
+                    
+                    const e2 = 2 * err;
+                    if (e2 > -dy) {
+                        err -= dy;
+                        x0 += sx;
+                    }
+                    if (e2 < dx) {
+                        err += dx;
+                        y0 += sy;
+                    }
+                }
+                
+                this.state.lastX = x1;
+                this.state.lastY = y1;
+            }
+            
+            eraseLine(x0, y0, x1, y1) {
+                // Similar to drawLine but using erasePixel
+                const dx = Math.abs(x1 - x0);
+                const dy = Math.abs(y1 - y0);
+                const sx = x0 < x1 ? 1 : -1;
+                const sy = y0 < y1 ? 1 : -1;
+                let err = dx - dy;
+                
+                while (true) {
+                    this.erasePixel(x0, y0);
+                    
+                    if (x0 === x1 && y0 === y1) break;
+                    
+                    const e2 = 2 * err;
+                    if (e2 > -dy) {
+                        err -= dy;
+                        x0 += sx;
+                    }
+                    if (e2 < dx) {
+                        err += dx;
+                        y0 += sy;
+                    }
+                }
+                
+                this.state.lastX = x1;
+                this.state.lastY = y1;
+            }
+            
+            previewLine(x0, y0, x1, y1) {
+                // Temporarily render a line preview
+                this.renderCanvas(); // Clear previous preview
+                
+                // Snap to angles if needed
+                if (this.state.snapAngle === 'iso') {
+                    // Isometric snapping (26.565° or multiples)
+                    const angle = Math.atan2(y1 - y0, x1 - x0) * (180 / Math.PI);
+                    const snapAngle = 26.565;
+                    const snappedAngle = Math.round(angle / snapAngle) * snapAngle * (Math.PI / 180);
+                    
+                    const distance = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
+                    x1 = x0 + Math.cos(snappedAngle) * distance;
+                    y1 = y0 + Math.sin(snappedAngle) * distance;
+                } else if (this.state.snapAngle === 'ortho') {
+                    // Orthogonal snapping (0°, 90°, 180°, 270°)
+                    const dx = Math.abs(x1 - x0);
+                    const dy = Math.abs(y1 - y0);
+                    
+                    if (dx > dy) {
+                        y1 = y0; // Horizontal line
+                    } else {
+                        x1 = x0; // Vertical line
+                    }
+                }
+                
+                // Draw the preview line
+                this.mainCtx.beginPath();
+                this.mainCtx.moveTo(x0, y0);
+                this.mainCtx.lineTo(x1, y1);
+                this.mainCtx.strokeStyle = this.state.color;
+                this.mainCtx.lineWidth = this.state.lineWidth;
+                this.mainCtx.stroke();
+            }
+            
+            commitLine(x0, y0, x1, y1) {
+                // Actually draw the line on the active layer
+                const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                
+                // Apply the same snapping as in preview
+                if (this.state.snapAngle === 'iso') {
+                    const angle = Math.atan2(y1 - y0, x1 - x0) * (180 / Math.PI);
+                    const snapAngle = 26.565;
+                    const snappedAngle = Math.round(angle / snapAngle) * snapAngle * (Math.PI / 180);
+                    
+                    const distance = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
+                    x1 = x0 + Math.cos(snappedAngle) * distance;
+                    y1 = y0 + Math.sin(snappedAngle) * distance;
+                } else if (this.state.snapAngle === 'ortho') {
+                    const dx = Math.abs(x1 - x0);
+                    const dy = Math.abs(y1 - y0);
+                    
+                    if (dx > dy) {
+                        y1 = y0;
+                    } else {
+                        x1 = x0;
+                    }
+                }
+                
+                // Draw the final line
+                ctx.beginPath();
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(x1, y1);
+                ctx.strokeStyle = this.state.color;
+                ctx.lineWidth = this.state.lineWidth;
+                ctx.stroke();
+                
+                this.renderCanvas();
+            }
+            
+            pickColor(x, y) {
+                // Get pixel color at x, y from the main canvas
+                const pixel = this.mainCtx.getImageData(x, y, 1, 1).data;
+                const r = pixel[0].toString(16).padStart(2, '0');
+                const g = pixel[1].toString(16).padStart(2, '0');
+                const b = pixel[2].toString(16).padStart(2, '0');
+                
+                this.state.color = `#${r}${g}${b}`;
+                document.getElementById('colorPicker').value = this.state.color;
+                this.updateColorPalette();
+                
+                // Switch back to pencil tool
+                document.getElementById('pencilTool').click();
+            }
+            
+            fillArea(x, y) {
+                const targetLayer = this.state.layers[this.state.activeLayer];
+                const ctx = targetLayer.canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, this.state.canvasSize.width, this.state.canvasSize.height);
+                const data = imageData.data;
+                
+                // Get the color to replace
+                const targetPos = (y * this.state.canvasSize.width + x) * 4;
+                const targetR = data[targetPos];
+                const targetG = data[targetPos + 1];
+                const targetB = data[targetPos + 2];
+                const targetA = data[targetPos + 3];
+                
+                // Get the new color
+                const fillColor = this.hexToRgb(this.state.color);
+                
+                // Don't fill if the target color is the same as the fill color
+                if (
+                    targetR === fillColor.r &&
+                    targetG === fillColor.g &&
+                    targetB === fillColor.b &&
+                    targetA === 255
+                ) {
+                    return;
+                }
+                
+                // Flood fill algorithm
+                const stack = [{x, y}];
+                const width = this.state.canvasSize.width;
+                const height = this.state.canvasSize.height;
+                
+                const isSameColor = (pos) => {
+                    return (
+                        data[pos] === targetR &&
+                        data[pos + 1] === targetG &&
+                        data[pos + 2] === targetB &&
+                        data[pos + 3] === targetA
+                    );
+                };
+                
+                const setColor = (pos) => {
+                    data[pos] = fillColor.r;
+                    data[pos + 1] = fillColor.g;
+                    data[pos + 2] = fillColor.b;
+                    data[pos + 3] = 255;
+                };
+                
+                while (stack.length > 0) {
+                    const current = stack.pop();
+                    const pos = (current.y * width + current.x) * 4;
+                    
+                    if (!isSameColor(pos)) continue;
+                    
+                    // Set color at current position
+                    setColor(pos);
+                    
+                    // Check neighboring pixels
+                    if (current.x > 0) stack.push({x: current.x - 1, y: current.y});
+                    if (current.x < width - 1) stack.push({x: current.x + 1, y: current.y});
+                    if (current.y > 0) stack.push({x: current.x, y: current.y - 1});
+                    if (current.y < height - 1) stack.push({x: current.x, y: current.y + 1});
+                }
+                
+                // Put the modified image data back
+                ctx.putImageData(imageData, 0, 0);
+                this.renderCanvas();
+                this.saveState();
+            }
+            
+            startSelection(x, y) {
+                this.state.selection = {
+                    x: x,
+                    y: y,
+                    width: 0,
+                    height: 0
+                };
+            }
+            
+            updateSelection(x, y) {
+                if (!this.state.selection) return;
+                
+                this.state.selection.width = x - this.state.selection.x;
+                this.state.selection.height = y - this.state.selection.y;
+                
+                this.renderCanvas();
+            }
+            
+            finalizeSelection() {
+                if (!this.state.selection) return;
+                
+                // Normalize the selection (handle negative width/height)
+                if (this.state.selection.width < 0) {
+                    this.state.selection.x += this.state.selection.width;
+                    this.state.selection.width = Math.abs(this.state.selection.width);
+                }
+                
+                if (this.state.selection.height < 0) {
+                    this.state.selection.y += this.state.selection.height;
+                    this.state.selection.height = Math.abs(this.state.selection.height);
+                }
+                
+                this.renderCanvas();
+            }
+            
+            clearSelection() {
+                this.state.selection = null;
+                this.renderCanvas();
+            }
+            
+            copySelection() {
+                if (!this.state.selection) return;
+                
+                const { x, y, width, height } = this.state.selection;
+                
+                // Create a new canvas to hold the copied data
+                const copyCanvas = document.createElement('canvas');
+                copyCanvas.width = width;
+                copyCanvas.height = height;
+                const copyCtx = copyCanvas.getContext('2d');
+                
+                // Copy from the main canvas
+                copyCtx.drawImage(
+                    this.mainCanvas,
+                    x, y, width, height,
+                    0, 0, width, height
+                );
+                
+                // Store in clipboard
+                this.state.clipboard = {
+                    canvas: copyCanvas,
+                    width: width,
+                    height: height
+                };
+            }
+            
+            cutSelection() {
+                if (!this.state.selection) return;
+                
+                // First copy the selection
+                this.copySelection();
+                
+                // Then clear the selected area on the active layer
+                const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                const { x, y, width, height } = this.state.selection;
+                ctx.clearRect(x, y, width, height);
+                
+                this.renderCanvas();
+                this.saveState();
+                this.clearSelection();
+            }
+            
+            pasteSelection() {
+                if (!this.state.clipboard) return;
+                
+                // Position in the center of the view
+                const x = Math.floor((this.state.canvasSize.width - this.state.clipboard.width) / 2);
+                const y = Math.floor((this.state.canvasSize.height - this.state.clipboard.height) / 2);
+                
+                // Draw the clipboard content to the active layer
+                const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                ctx.drawImage(this.state.clipboard.canvas, x, y);
+                
+                // Create a selection around the pasted content
+                this.state.selection = {
+                    x: x,
+                    y: y,
+                    width: this.state.clipboard.width,
+                    height: this.state.clipboard.height
+                };
+                
+                this.renderCanvas();
+                this.saveState();
+            }
+            
+            selectAll() {
+                this.state.selection = {
+                    x: 0,
+                    y: 0,
+                    width: this.state.canvasSize.width,
+                    height: this.state.canvasSize.height
+                };
+                
+                this.renderCanvas();
+            }
+            
+            startMove(x, y) {
+                if (!this.state.selection) return;
+                
+                const { x: selX, y: selY, width, height } = this.state.selection;
+                
+                // Check if click is inside the selection
+                if (x >= selX && x <= selX + width && y >= selY && y <= selY + height) {
+                    this.state.dragStart = { x, y };
+                } else {
+                    this.clearSelection();
+                }
+            }
+            
+            updateMove(x, y) {
+                if (!this.state.dragStart || !this.state.selection) return;
+                
+                const dx = x - this.state.dragStart.x;
+                const dy = y - this.state.dragStart.y;
+                
+                // Update selection position
+                this.state.selection.x += dx;
+                this.state.selection.y += dy;
+                
+                // Update drag start position
+                this.state.dragStart = { x, y };
+                
+                this.renderCanvas();
+            }
+            
+            flipSelection(direction) {
+                if (!this.state.selection) return;
+                
+                const { x, y, width, height } = this.state.selection;
+                
+                // Create a temporary canvas to hold the flipped content
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Copy content from the main canvas
+                tempCtx.drawImage(
+                    this.mainCanvas,
+                    x, y, width, height,
+                    0, 0, width, height
+                );
+                
+                // Create another canvas for the flipped result
+                const resultCanvas = document.createElement('canvas');
+                resultCanvas.width = width;
+                resultCanvas.height = height;
+                const resultCtx = resultCanvas.getContext('2d');
+                
+                // Apply flip transformation
+                if (direction === 'horizontal') {
+                    resultCtx.translate(width, 0);
+                    resultCtx.scale(-1, 1);
+                } else {
+                    resultCtx.translate(0, height);
+                    resultCtx.scale(1, -1);
+                }
+                
+                // Draw the flipped content
+                resultCtx.drawImage(tempCanvas, 0, 0, width, height);
+                
+                // Clear the selection area on the active layer
+                const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                ctx.clearRect(x, y, width, height);
+                
+                // Draw the flipped content
+                ctx.drawImage(resultCanvas, x, y);
+                
+                this.renderCanvas();
+                this.saveState();
+            }
+            
+            startShapeDraw(x, y) {
+                this.state.shapeStart = { x, y };
+                this.state.shapeEnd = { x, y };
+            }
+            
+            updateShapeDraw(x, y) {
+                this.state.shapeEnd = { x, y };
+                this.renderCanvas();
+                
+                // Draw preview shape
+                if (this.state.tool === 'rectangle') {
+                    this.drawRectanglePreview();
+                } else if (this.state.tool === 'isocube') {
+                    this.drawIsoCubePreview();
+                }
+            }
+            
+            finalizeShape() {
+                const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                
+                if (this.state.tool === 'rectangle') {
+                    const { x: x1, y: y1 } = this.state.shapeStart;
+                    const { x: x2, y: y2 } = this.state.shapeEnd;
+                    
+                    const x = Math.min(x1, x2);
+                    const y = Math.min(y1, y2);
+                    const width = Math.abs(x2 - x1);
+                    const height = Math.abs(y2 - y1);
+                    
+                    if (document.getElementById('fillShape').checked) {
+                        ctx.fillStyle = this.state.color;
+                        ctx.fillRect(x, y, width, height);
+                    } else {
+                        ctx.strokeStyle = this.state.color;
+                        ctx.lineWidth = this.state.lineWidth;
+                        ctx.strokeRect(x, y, width, height);
+                    }
+                } else if (this.state.tool === 'isocube') {
+                    this.drawIsoCube(ctx);
+                }
+                
+                this.renderCanvas();
+                this.state.shapeStart = null;
+                this.state.shapeEnd = null;
+            }
+            
+            drawRectanglePreview() {
+                if (!this.state.shapeStart || !this.state.shapeEnd) return;
+                
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = Math.min(x1, x2);
+                const y = Math.min(y1, y2);
+                const width = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                
+                if (document.getElementById('fillShape').checked) {
+                    this.mainCtx.fillStyle = this.state.color;
+                    this.mainCtx.fillRect(x, y, width, height);
+                } else {
+                    this.mainCtx.strokeStyle = this.state.color;
+                    this.mainCtx.lineWidth = this.state.lineWidth;
+                    this.mainCtx.strokeRect(x, y, width, height);
+                }
+            }
+            
+            drawIsoCubePreview() {
+                if (!this.state.shapeStart || !this.state.shapeEnd) return;
+                
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                // Calculate dimensions
+                const width = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                const depth = Math.min(width, height) / 2;
+                
+                // Calculate starting position
+                const x = Math.min(x1, x2);
+                const y = Math.min(y1, y2);
+                
+                // Draw the cube preview
+                this.mainCtx.strokeStyle = this.state.color;
+                this.mainCtx.fillStyle = this.state.color;
+                this.mainCtx.lineWidth = 1;
+                
+                // Draw front face
+                if (document.getElementById('fillShape').checked) {
+                    this.mainCtx.globalAlpha = 0.8;
+                    this.mainCtx.fillRect(x, y, width, height);
+                    this.mainCtx.globalAlpha = 1.0;
+                } else {
+                    this.mainCtx.strokeRect(x, y, width, height);
+                }
+                
+                // Draw top face (isometric)
+                this.mainCtx.beginPath();
+                this.mainCtx.moveTo(x, y);
+                this.mainCtx.lineTo(x + depth, y - depth / 2);
+                this.mainCtx.lineTo(x + width + depth, y - depth / 2);
+                this.mainCtx.lineTo(x + width, y);
+                this.mainCtx.closePath();
+                
+                if (document.getElementById('fillShape').checked) {
+                    this.mainCtx.globalAlpha = 0.6;
+                    this.mainCtx.fill();
+                    this.mainCtx.globalAlpha = 1.0;
+                }
+                this.mainCtx.stroke();
+                
+                // Draw right face (isometric)
+                this.mainCtx.beginPath();
+                this.mainCtx.moveTo(x + width, y);
+                this.mainCtx.lineTo(x + width + depth, y - depth / 2);
+                this.mainCtx.lineTo(x + width + depth, y + height - depth / 2);
+                this.mainCtx.lineTo(x + width, y + height);
+                this.mainCtx.closePath();
+                
+                if (document.getElementById('fillShape').checked) {
+                    this.mainCtx.globalAlpha = 0.4;
+                    this.mainCtx.fill();
+                    this.mainCtx.globalAlpha = 1.0;
+                }
+                this.mainCtx.stroke();
+            }
+            
+            drawIsoCube(ctx) {
+                if (!this.state.shapeStart || !this.state.shapeEnd) return;
+                
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                // Calculate dimensions
+                const width = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                const depth = Math.min(width, height) / 2;
+                
+                // Calculate starting position
+                const x = Math.min(x1, x2);
+                const y = Math.min(y1, y2);
+                
+                // Draw the cube
+                ctx.strokeStyle = this.state.color;
+                ctx.fillStyle = this.state.color;
+                ctx.lineWidth = 1;
+                
+                // Draw front face
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillRect(x, y, width, height);
+                    ctx.globalAlpha = 1.0;
+                } else {
+                    ctx.strokeRect(x, y, width, height);
+                }
+                
+                // Draw top face (isometric)
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + depth, y - depth / 2);
+                ctx.lineTo(x + width + depth, y - depth / 2);
+                ctx.lineTo(x + width, y);
+                ctx.closePath();
+                
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.6;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+                
+                // Draw right face (isometric)
+                ctx.beginPath();
+                ctx.moveTo(x + width, y);
+                ctx.lineTo(x + width + depth, y - depth / 2);
+                ctx.lineTo(x + width + depth, y + height - depth / 2);
+                ctx.lineTo(x + width, y + height);
+                ctx.closePath();
+                
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.4;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+            }
+            
+            // Canvas navigation and zoom
+            zoom(delta) {
+                const newZoom = Math.max(0.25, Math.min(20, this.state.zoom + delta));
+                this.state.zoom = newZoom;
+                this.updateCanvasScale();
+            }
+            
+            startPan(x, y) {
+                this.state.isPanning = true;
+                this.state.panStart = { x, y };
+            }
+            
+            updatePan(x, y) {
+                if (!this.state.isPanning) return;
+                
+                const container = document.getElementById('canvasContainer');
+                const dx = x - this.state.panStart.x;
+                const dy = y - this.state.panStart.y;
+                
+                container.scrollLeft -= dx;
+                container.scrollTop -= dy;
+                
+                this.state.panStart = { x, y };
+            }
+            
+            endPan() {
+                this.state.isPanning = false;
+                this.state.panStart = null;
+            }
+            
+            tempActivateHandTool() {
+                this.previousTool = this.state.tool;
+                document.getElementById('handTool').click();
+                
+                const handleKeyUp = (e) => {
+                    if (e.key === ' ') {
+                        document.getElementById(`${this.previousTool}Tool`).click();
+                        window.removeEventListener('keyup', handleKeyUp);
+                    }
+                };
+                
+                window.addEventListener('keyup', handleKeyUp);
+            }
+            
+            startPinchZoom(e) {
+                if (e.touches.length !== 2) return;
+                
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                
+                this.state.pinchDistance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+            }
+            
+            updatePinchZoom(e) {
+                if (e.touches.length !== 2 || !this.state.pinchDistance) return;
+                
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                
+                const currentDistance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+                
+                const scale = currentDistance / this.state.pinchDistance;
+                const delta = (scale - 1) * 0.5; // Adjust sensitivity
+                
+                this.zoom(delta);
+                this.state.pinchDistance = currentDistance;
+            }
+            
+            endPinchZoom() {
+                this.state.pinchDistance = null;
+            }
+            
+            // Layer management
+            addLayer() {
+                const newLayer = {
+                    id: this.generateId(),
+                    name: `Layer ${this.state.layers.length}`,
+                    visible: true,
+                    opacity: 1,
+                    canvas: document.createElement('canvas')
+                };
+                
+                newLayer.canvas.width = this.state.canvasSize.width;
+                newLayer.canvas.height = this.state.canvasSize.height;
+                
+                this.state.layers.push(newLayer);
+                this.state.activeLayer = this.state.layers.length - 1;
+                
+                this.updateLayersList();
+                this.saveState();
+            }
+            
+            removeLayer() {
+                if (this.state.layers.length <= 2 || this.state.activeLayer === 0) {
+                    alert("Cannot remove background layer or the only remaining layer.");
+                    return;
+                }
+                
+                this.state.layers.splice(this.state.activeLayer, 1);
+                this.state.activeLayer = Math.min(this.state.activeLayer, this.state.layers.length - 1);
+                
+                this.updateLayersList();
+                this.renderCanvas();
+                this.saveState();
+            }
+            
+            updateColorPalette() {
+                // Update the active color in the palette
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    if (swatch.dataset.color === this.state.color) {
+                        swatch.classList.add('active');
+                    } else {
+                        swatch.classList.remove('active');
+                    }
+                });
+            }
+            
+            // Canvas operations
+            resizeCanvas() {
+                const width = parseInt(document.getElementById('canvasWidth').value);
+                const height = parseInt(document.getElementById('canvasHeight').value);
+                
+                if (isNaN(width) || isNaN(height) || width < 32 || height < 32 || width > 2048 || height > 2048) {
+                    alert("Canvas dimensions must be between 32 and 2048 pixels.");
+                    return;
+                }
+                
+                if (width === this.state.canvasSize.width && height === this.state.canvasSize.height) {
+                    return; // No change
+                }
+                
+                // Ask for confirmation if downsizing
+                if (width < this.state.canvasSize.width || height < this.state.canvasSize.height) {
+                    if (!confirm("Reducing canvas size may crop your artwork. Continue?")) {
+                        return;
+                    }
+                }
+                
+                // Create temp canvas to hold current image
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = this.state.canvasSize.width;
+                tempCanvas.height = this.state.canvasSize.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(this.mainCanvas, 0, 0);
+                
+                // Update canvas size
+                this.state.canvasSize = { width, height };
+                this.mainCanvas.width = width;
+                this.mainCanvas.height = height;
+                this.gridCanvas.width = width;
+                this.gridCanvas.height = height;
+                
+                // Resize all layers
+                this.state.layers.forEach(layer => {
+                    const newCanvas = document.createElement('canvas');
+                    newCanvas.width = width;
+                    newCanvas.height = height;
+                    const ctx = newCanvas.getContext('2d');
+                    
+                    // Copy content from old canvas
+                    ctx.drawImage(layer.canvas, 0, 0);
+                    layer.canvas = newCanvas;
+                });
+                
+                // Update UI
+                document.getElementById('canvasSizeDisplay').textContent = `${width}x${height}`;
+                
+                // Redraw grid and canvas
+                this.drawGrid();
+                this.renderCanvas();
+                this.saveState();
+            }
+            
+            // Project operations
+            newProject() {
+                if (confirm("Create a new project? All unsaved changes will be lost.")) {
+                    // Reset state
+                    this.state.layers = [];
+                    this.state.activeLayer = 0;
+                    this.state.selection = null;
+                    this.state.clipboard = null;
+                    
+                    // Reset history
+                    this.history = {
+                        states: [],
+                        currentIndex: -1,
+                        maxStates: 50
+                    };
+                    
+                    // Initialize new canvas
+                    this.initializeLayers();
+                    this.renderCanvas();
+                    this.drawGrid();
+                    this.saveState();
+                }
+            }
+            
+            saveProject() {
+                // Create a project object
+                const project = {
+                    version: '1.0',
+                    canvasSize: this.state.canvasSize,
+                    backgroundColor: this.state.backgroundColor,
+                    layers: this.state.layers.map(layer => {
+                        return {
+                            id: layer.id,
+                            name: layer.name,
+                            visible: layer.visible,
+                            opacity: layer.opacity,
+                            data: layer.canvas.toDataURL()
+                        };
+                    }),
+                    activeLayer: this.state.activeLayer,
+                    palette: this.palette,
+                    gridSettings: {
+                        visible: this.state.gridVisible,
+                        size: this.state.gridSize,
+                        opacity: this.state.gridOpacity,
+                        color: this.state.gridColor,
+                        type: this.state.gridType
+                    }
+                };
+                
+                // Convert to JSON
+                const json = JSON.stringify(project);
+                
+                // Create a download link
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'isometric_pixel_art.iso';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 0);
+            }
+            
+            exportImage() {
+                // Combine all visible layers
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = this.state.canvasSize.width;
+                exportCanvas.height = this.state.canvasSize.height;
+                const ctx = exportCanvas.getContext('2d');
+                
+                // Draw background
+                ctx.fillStyle = this.state.backgroundColor;
+                ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+                
+                // Draw each visible layer
+                this.state.layers.forEach(layer => {
+                    if (layer.visible) {
+                        ctx.globalAlpha = layer.opacity;
+                        ctx.drawImage(layer.canvas, 0, 0);
+                    }
+                });
+                
+                // Reset alpha
+                ctx.globalAlpha = 1;
+                
+                // Create a download link
+                const url = exportCanvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'isometric_pixel_art.png';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                }, 0);
+            }
+            
+            // History management
+            saveState() {
+                // Create a snapshot of the current state
+                const snapshot = {
+                    layers: this.state.layers.map(layer => {
+                        const layerCopy = document.createElement('canvas');
+                        layerCopy.width = layer.canvas.width;
+                        layerCopy.height = layer.canvas.height;
+                        const ctx = layerCopy.getContext('2d');
+                        ctx.drawImage(layer.canvas, 0, 0);
+                        
+                        return {
+                            id: layer.id,
+                            name: layer.name,
+                            visible: layer.visible,
+                            opacity: layer.opacity,
+                            canvas: layerCopy
+                        };
+                    }),
+                    activeLayer: this.state.activeLayer
+                };
+                
+                // If we're not at the end of the history, truncate it
+                if (this.history.currentIndex < this.history.states.length - 1) {
+                    this.history.states = this.history.states.slice(0, this.history.currentIndex + 1);
+                }
+                
+                // Add the new state
+                this.history.states.push(snapshot);
+                this.history.currentIndex = this.history.states.length - 1;
+                
+                // Limit the number of states
+                if (this.history.states.length > this.history.maxStates) {
+                    this.history.states.shift();
+                    this.history.currentIndex--;
+                }
+            }
+            
+            undo() {
+                if (this.history.currentIndex <= 0) return;
+                
+                this.history.currentIndex--;
+                this.restoreState(this.history.states[this.history.currentIndex]);
+            }
+            
+            redo() {
+                if (this.history.currentIndex >= this.history.states.length - 1) return;
+                
+                this.history.currentIndex++;
+                this.restoreState(this.history.states[this.history.currentIndex]);
+            }
+            
+            restoreState(state) {
+                this.state.layers = state.layers.map(layer => ({...layer}));
+                this.state.activeLayer = state.activeLayer;
+                
+                this.updateLayersList();
+                this.renderCanvas();
+            }
+            
+            // Utility functions
+            generateId() {
+                return Math.random().toString(36).substr(2, 9);
+            }
+            
+            hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            }
+        }
+        
+        // Initialize the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            window.pixelEditor = new IsometricPixelEditor();
+        });
+    </script>
+</body>
+</html>
