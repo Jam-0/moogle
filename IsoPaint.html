@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Isometric Pixel Art Editor</title>
+    <title>Enhanced Isometric Pixel Art Editor</title>
     <style>
         :root {
             --bg-primary: #1e1e1e;
@@ -131,6 +131,36 @@
 
         .color-swatch.active {
             border: 2px solid var(--text-primary);
+        }
+
+        .brush-patterns {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .brush-pattern {
+            width: 100%;
+            height: 40px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .brush-pattern.active {
+            border: 2px solid var(--accent);
+            background-color: var(--accent);
+        }
+
+        .brush-pattern canvas {
+            max-width: 100%;
+            max-height: 100%;
         }
 
         .layer-list {
@@ -295,7 +325,12 @@
         .tool-active-line .option-line-width,
         .tool-active-line .option-snap-angle,
         .tool-active-shape .option-shape-type,
-        .tool-active-shape .option-fill {
+        .tool-active-shape .option-fill,
+        .tool-active-magicwand .option-tolerance,
+        .tool-active-rectangle .option-shape-type,
+        .tool-active-rectangle .option-fill,
+        .tool-active-isocube .option-shape-type,
+        .tool-active-isocube .option-fill {
             display: flex;
         }
 
@@ -351,11 +386,18 @@
             z-index: 1000;
             display: none;
         }
+
+        .lasso-path {
+            stroke: #0078d4;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 5,5;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Isometric Pixel Art Editor</h1>
+        <h1>Enhanced Isometric Pixel Art Editor</h1>
         <div class="btn-group">
             <button id="newBtn">New</button>
             <button id="saveBtn">Save</button>
@@ -374,6 +416,8 @@
             <div class="separator"></div>
             
             <button class="tool-btn" id="selectTool" title="Selection (S)">◻️</button>
+            <button class="tool-btn" id="magicWandTool" title="Magic Wand (W)">🪄</button>
+            <button class="tool-btn" id="lassoTool" title="Lasso (L)">🎯</button>
             <button class="tool-btn" id="moveTool" title="Move (M)">✋</button>
             
             <div class="separator"></div>
@@ -391,12 +435,39 @@
         
         <div class="sidebar">
             <div class="sidebar-section">
-                <h2>Color</h2>
+                <h2>Color Themes</h2>
+                <div class="input-group">
+                    <label for="paletteTheme">Theme</label>
+                    <select id="paletteTheme">
+                        <option value="nature">Nature</option>
+                        <option value="scifi">Sci-Fi</option>
+                        <option value="retro">Retro</option>
+                        <option value="monochrome">Monochrome</option>
+                        <option value="warm">Warm</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="paletteVariant">Variant</label>
+                    <select id="paletteVariant"></select>
+                </div>
                 <div class="color-palette" id="colorPalette"></div>
                 <div class="input-group" style="margin-top: 10px;">
                     <label for="colorPicker">Custom Color</label>
                     <input type="color" id="colorPicker" style="width: 100%;">
                 </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <h2>Custom Brushes</h2>
+                <div class="btn-group" style="margin-bottom: 8px;">
+                    <button id="createBrushBtn" disabled>Create Brush</button>
+                    <button id="clearBrushBtn">Clear</button>
+                </div>
+                <div class="input-group">
+                    <label for="brushScale">Brush Scale</label>
+                    <input type="range" id="brushScale" min="1" max="4" value="1">
+                </div>
+                <div class="brush-patterns" id="brushPatterns"></div>
             </div>
             
             <div class="sidebar-section">
@@ -463,6 +534,7 @@
             <div class="canvas-wrapper" id="canvasWrapper">
                 <canvas id="mainCanvas"></canvas>
                 <canvas id="gridCanvas"></canvas>
+                <svg id="lassoOverlay" style="position: absolute; top: 0; left: 0; pointer-events: none;"></svg>
             </div>
         </div>
     </div>
@@ -490,12 +562,19 @@
                 <option value="rectangle">Rectangle</option>
                 <option value="isocube">Iso Cube</option>
                 <option value="platform">Platform</option>
+                <option value="cylinder">Cylinder</option>
+                <option value="pyramid">Pyramid</option>
+                <option value="sphere">Sphere</option>
                 <option value="stairs">Stairs</option>
             </select>
         </div>
         <div class="tool-option option-fill">
             <label for="fillShape">Fill:</label>
             <input type="checkbox" id="fillShape" checked>
+        </div>
+        <div class="tool-option option-tolerance">
+            <label for="tolerance">Tolerance:</label>
+            <input type="number" id="tolerance" min="0" max="255" value="32" style="width: 60px;">
         </div>
     </div>
     
@@ -521,12 +600,79 @@
     <div class="tooltip" id="tooltip"></div>
 
     <script>
+        // Color palette themes
+        const paletteThemes = {
+            nature: [
+                {
+                    name: "Forest",
+                    colors: ["#2d5016", "#5a8a2b", "#9bbc0f", "#306230", "#0f380f", "#3b2f2f", "#8b4513", "#654321", "#228b22", "#006400", "#32cd32", "#90ee90", "#8fbc8f", "#556b2f", "#6b8e23", "#9acd32"]
+                },
+                {
+                    name: "Ocean",
+                    colors: ["#001f3f", "#0074d9", "#7fdbff", "#39cccc", "#3d9970", "#2ecc40", "#01ff70", "#ffdc00", "#ff851b", "#ff4136", "#85144b", "#f012be", "#b10dc9", "#111111", "#aaaaaa", "#dddddd"]
+                },
+                {
+                    name: "Desert",
+                    colors: ["#8b4513", "#d2b48c", "#f4a460", "#daa520", "#cd853f", "#a0522d", "#8b7355", "#696969", "#f5deb3", "#ffe4b5", "#ffdead", "#f0e68c", "#eee8aa", "#bdb76b", "#9acd32", "#6b8e23"]
+                }
+            ],
+            scifi: [
+                {
+                    name: "Neon",
+                    colors: ["#000000", "#ff0080", "#00ff80", "#8000ff", "#ff8000", "#0080ff", "#80ff00", "#ff0040", "#40ff00", "#0040ff", "#ff4080", "#80ff40", "#4080ff", "#ff8040", "#40ff80", "#8040ff"]
+                },
+                {
+                    name: "Cyberpunk",
+                    colors: ["#0d1b2a", "#1b263b", "#415a77", "#778da9", "#e0e1dd", "#ff006e", "#8338ec", "#3a86ff", "#06ffa5", "#ffbe0b", "#fb5607", "#ff006e", "#8338ec", "#3a86ff", "#06ffa5", "#ffbe0b"]
+                },
+                {
+                    name: "Matrix",
+                    colors: ["#000000", "#001100", "#002200", "#003300", "#004400", "#005500", "#006600", "#007700", "#008800", "#009900", "#00aa00", "#00bb00", "#00cc00", "#00dd00", "#00ee00", "#00ff00"]
+                }
+            ],
+            retro: [
+                {
+                    name: "GameBoy",
+                    colors: ["#0f380f", "#306230", "#8bac0f", "#9bbc0f", "#0f380f", "#306230", "#8bac0f", "#9bbc0f", "#0f380f", "#306230", "#8bac0f", "#9bbc0f", "#0f380f", "#306230", "#8bac0f", "#9bbc0f"]
+                },
+                {
+                    name: "C64",
+                    colors: ["#000000", "#ffffff", "#68372b", "#70a4b2", "#6f3d86", "#588d43", "#352879", "#b8c76f", "#6f4f25", "#433900", "#9a6759", "#444444", "#6c6c6c", "#9ad284", "#6c5eb5", "#959595"]
+                },
+                {
+                    name: "Atari",
+                    colors: ["#000000", "#404040", "#6c6c6c", "#909090", "#b0b0b0", "#c8c8c8", "#dcdcdc", "#f4f4f4", "#444400", "#646410", "#848424", "#a0a034", "#b8b840", "#d0d050", "#e8e85c", "#fcfc68"]
+                }
+            ],
+            monochrome: [
+                {
+                    name: "Grayscale",
+                    colors: ["#000000", "#111111", "#222222", "#333333", "#444444", "#555555", "#666666", "#777777", "#888888", "#999999", "#aaaaaa", "#bbbbbb", "#cccccc", "#dddddd", "#eeeeee", "#ffffff"]
+                },
+                {
+                    name: "Sepia",
+                    colors: ["#704214", "#8b4513", "#a0522d", "#cd853f", "#d2b48c", "#daa520", "#f4a460", "#f5deb3", "#ffe4b5", "#ffdead", "#f0e68c", "#eee8aa", "#bdb76b", "#9acd32", "#6b8e23", "#556b2f"]
+                }
+            ],
+            warm: [
+                {
+                    name: "Sunset",
+                    colors: ["#2d1b69", "#5c2e63", "#8b4a6b", "#bc6c7c", "#d4979e", "#e8c5c5", "#f2f2f2", "#ffb3ba", "#ffdfba", "#ffffba", "#baffc9", "#bae1ff", "#c9c9ff", "#e1baff", "#ffbaff", "#ffb3ba"]
+                },
+                {
+                    name: "Autumn",
+                    colors: ["#8b4513", "#a0522d", "#cd853f", "#d2b48c", "#daa520", "#f4a460", "#ffe4b5", "#ffdead", "#f0e68c", "#eee8aa", "#bdb76b", "#9acd32", "#6b8e23", "#556b2f", "#8fbc8f", "#90ee90"]
+                }
+            ]
+        };
+
         // Main application class
         class IsometricPixelEditor {
             constructor() {
                 // Initialize canvas elements
                 this.mainCanvas = document.getElementById('mainCanvas');
                 this.gridCanvas = document.getElementById('gridCanvas');
+                this.lassoOverlay = document.getElementById('lassoOverlay');
                 this.mainCtx = this.mainCanvas.getContext('2d', { willReadFrequently: true });
                 this.gridCtx = this.gridCanvas.getContext('2d');
                 
@@ -558,15 +704,20 @@
                     activeLayer: 0,
                     dragStart: null,
                     isPanning: false,
+                    
+                    // Enhanced features
+                    brushPatterns: new Map(),
+                    activeBrushPattern: null,
+                    brushScale: 1,
+                    paletteTheme: 'nature',
+                    paletteVariant: 0,
+                    tolerance: 32,
+                    lassoPath: [],
+                    isLassoActive: false
                 };
                 
-                // Initialize palette
-                this.palette = [
-                    '#000000', '#ffffff', '#ff0000', '#00ff00', 
-                    '#0000ff', '#ffff00', '#00ffff', '#ff00ff',
-                    '#880000', '#008800', '#000088', '#888800',
-                    '#008888', '#880088', '#888888', '#cccccc'
-                ];
+                // Initialize color palette from themes
+                this.initializePalette();
                 
                 // Initialize history for undo/redo
                 this.history = {
@@ -574,6 +725,9 @@
                     currentIndex: -1,
                     maxStates: 50
                 };
+                
+                // Initialize default brush patterns
+                this.initializeBrushPatterns();
                 
                 // Initialize layers
                 this.initializeLayers();
@@ -591,6 +745,69 @@
                 this.drawGrid();
                 this.renderCanvas();
                 this.saveState();
+            }
+            
+            initializePalette() {
+                const theme = paletteThemes[this.state.paletteTheme];
+                this.palette = theme[this.state.paletteVariant].colors;
+            }
+            
+            initializeBrushPatterns() {
+                // Create default patterns
+                const patterns = [
+                    { name: 'Solid', type: 'solid' },
+                    { name: '50%', type: 'checkerboard', density: 0.5 },
+                    { name: '25%', type: 'checkerboard', density: 0.25 },
+                    { name: 'Cross', type: 'cross' },
+                    { name: 'Dots', type: 'dots' },
+                    { name: 'Lines', type: 'lines' }
+                ];
+                
+                patterns.forEach(pattern => {
+                    const canvas = this.createPatternCanvas(pattern);
+                    this.state.brushPatterns.set(pattern.name, canvas);
+                });
+            }
+            
+            createPatternCanvas(pattern) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 8;
+                canvas.height = 8;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.fillStyle = '#000000';
+                
+                switch (pattern.type) {
+                    case 'solid':
+                        ctx.fillRect(0, 0, 8, 8);
+                        break;
+                    case 'checkerboard':
+                        for (let x = 0; x < 8; x++) {
+                            for (let y = 0; y < 8; y++) {
+                                if (Math.random() < pattern.density) {
+                                    ctx.fillRect(x, y, 1, 1);
+                                }
+                            }
+                        }
+                        break;
+                    case 'cross':
+                        ctx.fillRect(3, 0, 2, 8);
+                        ctx.fillRect(0, 3, 8, 2);
+                        break;
+                    case 'dots':
+                        ctx.fillRect(2, 2, 1, 1);
+                        ctx.fillRect(6, 2, 1, 1);
+                        ctx.fillRect(2, 6, 1, 1);
+                        ctx.fillRect(6, 6, 1, 1);
+                        break;
+                    case 'lines':
+                        for (let i = 0; i < 8; i += 2) {
+                            ctx.fillRect(i, 0, 1, 8);
+                        }
+                        break;
+                }
+                
+                return canvas;
             }
             
             initializeLayers() {
@@ -634,6 +851,10 @@
                 this.gridCanvas.width = this.state.canvasSize.width;
                 this.gridCanvas.height = this.state.canvasSize.height;
                 
+                // Set SVG overlay size
+                this.lassoOverlay.setAttribute('width', this.state.canvasSize.width);
+                this.lassoOverlay.setAttribute('height', this.state.canvasSize.height);
+                
                 // Enable image-rendering for pixel art
                 this.mainCanvas.style.imageRendering = 'pixelated';
                 
@@ -653,7 +874,56 @@
             }
             
             initializeUI() {
+                // Initialize palette theme selector
+                this.updatePaletteThemeOptions();
+                
                 // Create color palette UI
+                this.updateColorPalette();
+                
+                // Initialize brush patterns UI
+                this.updateBrushPatternsUI();
+                
+                // Initialize color picker
+                document.getElementById('colorPicker').value = this.state.color;
+                
+                // Update layer list
+                this.updateLayersList();
+                
+                // Update grid settings
+                document.getElementById('gridSize').value = `${this.state.gridSize.width},${this.state.gridSize.height}`;
+                document.getElementById('gridOpacity').value = this.state.gridOpacity * 100;
+                document.getElementById('gridColor').value = this.state.gridColor;
+                document.getElementById('gridType').value = this.state.gridType;
+                
+                // Update canvas settings
+                document.getElementById('canvasWidth').value = this.state.canvasSize.width;
+                document.getElementById('canvasHeight').value = this.state.canvasSize.height;
+                document.getElementById('bgColor').value = this.state.backgroundColor;
+                
+                // Update canvas size display
+                document.getElementById('canvasSizeDisplay').textContent = `${this.state.canvasSize.width}x${this.state.canvasSize.height}`;
+            }
+            
+            updatePaletteThemeOptions() {
+                const themeSelect = document.getElementById('paletteTheme');
+                const variantSelect = document.getElementById('paletteVariant');
+                
+                // Update variant options based on selected theme
+                const currentTheme = paletteThemes[this.state.paletteTheme];
+                variantSelect.innerHTML = '';
+                
+                currentTheme.forEach((variant, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = variant.name;
+                    if (index === this.state.paletteVariant) {
+                        option.selected = true;
+                    }
+                    variantSelect.appendChild(option);
+                });
+            }
+            
+            updateColorPalette() {
                 const palette = document.getElementById('colorPalette');
                 palette.innerHTML = '';
                 
@@ -679,26 +949,42 @@
                     
                     palette.appendChild(swatch);
                 });
+            }
+            
+            updateBrushPatternsUI() {
+                const container = document.getElementById('brushPatterns');
+                container.innerHTML = '';
                 
-                // Initialize color picker
-                document.getElementById('colorPicker').value = this.state.color;
-                
-                // Update layer list
-                this.updateLayersList();
-                
-                // Update grid settings
-                document.getElementById('gridSize').value = `${this.state.gridSize.width},${this.state.gridSize.height}`;
-                document.getElementById('gridOpacity').value = this.state.gridOpacity * 100;
-                document.getElementById('gridColor').value = this.state.gridColor;
-                document.getElementById('gridType').value = this.state.gridType;
-                
-                // Update canvas settings
-                document.getElementById('canvasWidth').value = this.state.canvasSize.width;
-                document.getElementById('canvasHeight').value = this.state.canvasSize.height;
-                document.getElementById('bgColor').value = this.state.backgroundColor;
-                
-                // Update canvas size display
-                document.getElementById('canvasSizeDisplay').textContent = `${this.state.canvasSize.width}x${this.state.canvasSize.height}`;
+                this.state.brushPatterns.forEach((canvas, name) => {
+                    const patternDiv = document.createElement('div');
+                    patternDiv.className = 'brush-pattern';
+                    patternDiv.dataset.pattern = name;
+                    
+                    if (name === this.state.activeBrushPattern) {
+                        patternDiv.classList.add('active');
+                    }
+                    
+                    // Clone the pattern canvas for display
+                    const displayCanvas = canvas.cloneNode();
+                    const displayCtx = displayCanvas.getContext('2d');
+                    displayCtx.drawImage(canvas, 0, 0);
+                    displayCanvas.style.width = '24px';
+                    displayCanvas.style.height = '24px';
+                    displayCanvas.style.imageRendering = 'pixelated';
+                    
+                    patternDiv.appendChild(displayCanvas);
+                    
+                    patternDiv.addEventListener('click', () => {
+                        // Remove active class from all patterns
+                        document.querySelectorAll('.brush-pattern').forEach(p => p.classList.remove('active'));
+                        // Add active class to clicked pattern
+                        patternDiv.classList.add('active');
+                        // Update active pattern
+                        this.state.activeBrushPattern = name;
+                    });
+                    
+                    container.appendChild(patternDiv);
+                });
             }
             
             updateLayersList() {
@@ -785,10 +1071,32 @@
                     });
                 });
                 
+                // Palette theme events
+                document.getElementById('paletteTheme').addEventListener('change', (e) => {
+                    this.state.paletteTheme = e.target.value;
+                    this.state.paletteVariant = 0;
+                    this.updatePaletteThemeOptions();
+                    this.initializePalette();
+                    this.updateColorPalette();
+                });
+                
+                document.getElementById('paletteVariant').addEventListener('change', (e) => {
+                    this.state.paletteVariant = parseInt(e.target.value);
+                    this.initializePalette();
+                    this.updateColorPalette();
+                });
+                
                 // Color picker event
                 document.getElementById('colorPicker').addEventListener('input', (e) => {
                     this.state.color = e.target.value;
-                    this.updateColorPalette();
+                    this.updateActiveColorSwatch();
+                });
+                
+                // Brush pattern events
+                document.getElementById('createBrushBtn').addEventListener('click', this.createBrushFromSelection.bind(this));
+                document.getElementById('clearBrushBtn').addEventListener('click', this.clearActiveBrush.bind(this));
+                document.getElementById('brushScale').addEventListener('input', (e) => {
+                    this.state.brushScale = parseInt(e.target.value);
                 });
                 
                 // Layer opacity event
@@ -858,6 +1166,10 @@
                     this.state.snapAngle = e.target.value;
                 });
                 
+                document.getElementById('tolerance').addEventListener('input', (e) => {
+                    this.state.tolerance = parseInt(e.target.value);
+                });
+                
                 // Context menu
                 document.getElementById('ctxCut').addEventListener('click', this.cutSelection.bind(this));
                 document.getElementById('ctxCopy').addEventListener('click', this.copySelection.bind(this));
@@ -880,6 +1192,29 @@
                 // Update body class for tool-specific options
                 document.body.className = document.body.className.replace(/tool-active-\w+/g, '');
                 document.body.classList.add(`tool-active-${this.state.tool}`);
+                
+                // Clear lasso path when switching tools
+                if (this.state.tool !== 'lasso') {
+                    this.clearLassoPath();
+                }
+                
+                // Update UI based on selection
+                this.updateCreateBrushButton();
+            }
+            
+            updateCreateBrushButton() {
+                const btn = document.getElementById('createBrushBtn');
+                btn.disabled = !this.state.selection;
+            }
+            
+            updateActiveColorSwatch() {
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    if (swatch.dataset.color === this.state.color) {
+                        swatch.classList.add('active');
+                    } else {
+                        swatch.classList.remove('active');
+                    }
+                });
             }
             
             toggleGrid() {
@@ -1028,6 +1363,12 @@
                     case 'select':
                         this.startSelection(x, y);
                         break;
+                    case 'magicwand':
+                        this.magicWandSelect(x, y);
+                        break;
+                    case 'lasso':
+                        this.startLasso(x, y);
+                        break;
                     case 'move':
                         this.startMove(x, y);
                         break;
@@ -1049,7 +1390,7 @@
                 
                 document.getElementById('positionDisplay').textContent = `X: ${x}, Y: ${y}`;
                 
-                if (!this.state.isDrawing && this.state.tool !== 'hand') return;
+                if (!this.state.isDrawing && this.state.tool !== 'hand' && this.state.tool !== 'lasso') return;
                 
                 if (this.state.isPanning) {
                     this.updatePan(e.clientX, e.clientY);
@@ -1070,6 +1411,9 @@
                     case 'select':
                         this.updateSelection(x, y);
                         break;
+                    case 'lasso':
+                        this.updateLasso(x, y);
+                        break;
                     case 'move':
                         this.updateMove(x, y);
                         break;
@@ -1084,7 +1428,7 @@
             }
             
             handleMouseUp() {
-                if (!this.state.isDrawing && !this.state.isPanning) return;
+                if (!this.state.isDrawing && !this.state.isPanning && !this.state.isLassoActive) return;
                 
                 if (this.state.isPanning) {
                     this.endPan();
@@ -1097,6 +1441,9 @@
                         break;
                     case 'select':
                         this.finalizeSelection();
+                        break;
+                    case 'lasso':
+                        this.finalizeLasso();
                         break;
                     case 'rectangle':
                     case 'isocube':
@@ -1226,6 +1573,12 @@
                         case 's':
                             document.getElementById('selectTool').click();
                             break;
+                        case 'w':
+                            document.getElementById('magicWandTool').click();
+                            break;
+                        case 'a':
+                            document.getElementById('lassoTool').click();
+                            break;
                         case 'm':
                             document.getElementById('moveTool').click();
                             break;
@@ -1252,6 +1605,7 @@
                             break;
                         case 'escape':
                             this.clearSelection();
+                            this.clearLassoPath();
                             break;
                     }
                 }
@@ -1265,10 +1619,20 @@
                 menu.style.display = 'block';
             }
             
-            // Drawing operations
+            // Enhanced drawing operations with pattern support
             drawPixel(x, y) {
                 if (x < 0 || y < 0 || x >= this.state.canvasSize.width || y >= this.state.canvasSize.height) return;
                 
+                if (this.state.activeBrushPattern) {
+                    this.drawWithPattern(x, y);
+                } else {
+                    this.drawSimplePixel(x, y);
+                }
+                
+                this.renderCanvas();
+            }
+            
+            drawSimplePixel(x, y) {
                 const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
                 ctx.fillStyle = this.state.color;
                 
@@ -1280,8 +1644,48 @@
                     const offset = Math.floor(size / 2);
                     ctx.fillRect(x - offset, y - offset, size, size);
                 }
+            }
+            
+            drawWithPattern(x, y) {
+                const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                const pattern = this.state.brushPatterns.get(this.state.activeBrushPattern);
                 
-                this.renderCanvas();
+                if (!pattern) return;
+                
+                const scale = this.state.brushScale;
+                const size = this.state.brushSize;
+                const offset = Math.floor(size / 2);
+                
+                // Create scaled pattern
+                const scaledPattern = document.createElement('canvas');
+                scaledPattern.width = pattern.width * scale;
+                scaledPattern.height = pattern.height * scale;
+                const scaledCtx = scaledPattern.getContext('2d');
+                scaledCtx.imageSmoothingEnabled = false;
+                scaledCtx.drawImage(pattern, 0, 0, scaledPattern.width, scaledPattern.height);
+                
+                // Apply color to pattern
+                const coloredPattern = this.applyColorToPattern(scaledPattern);
+                
+                // Draw pattern at position
+                ctx.drawImage(coloredPattern, x - offset, y - offset);
+            }
+            
+            applyColorToPattern(patternCanvas) {
+                const result = document.createElement('canvas');
+                result.width = patternCanvas.width;
+                result.height = patternCanvas.height;
+                const ctx = result.getContext('2d');
+                
+                // Draw original pattern
+                ctx.drawImage(patternCanvas, 0, 0);
+                
+                // Apply color overlay
+                ctx.globalCompositeOperation = 'source-in';
+                ctx.fillStyle = this.state.color;
+                ctx.fillRect(0, 0, result.width, result.height);
+                
+                return result;
             }
             
             erasePixel(x, y) {
@@ -1290,6 +1694,376 @@
                 const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
                 ctx.clearRect(x, y, this.state.brushSize, this.state.brushSize);
                 this.renderCanvas();
+            }
+            
+            // Magic wand selection
+            magicWandSelect(x, y) {
+                const imageData = this.mainCtx.getImageData(0, 0, this.state.canvasSize.width, this.state.canvasSize.height);
+                const data = imageData.data;
+                
+                // Get the target color
+                const targetPos = (y * this.state.canvasSize.width + x) * 4;
+                const targetR = data[targetPos];
+                const targetG = data[targetPos + 1];
+                const targetB = data[targetPos + 2];
+                const targetA = data[targetPos + 3];
+                
+                // Find connected pixels with similar color
+                const selected = new Set();
+                const stack = [{x, y}];
+                const width = this.state.canvasSize.width;
+                const height = this.state.canvasSize.height;
+                const tolerance = this.state.tolerance;
+                
+                const colorDistance = (r1, g1, b1, a1, r2, g2, b2, a2) => {
+                    return Math.sqrt(
+                        Math.pow(r1 - r2, 2) +
+                        Math.pow(g1 - g2, 2) +
+                        Math.pow(b1 - b2, 2) +
+                        Math.pow(a1 - a2, 2)
+                    );
+                };
+                
+                while (stack.length > 0) {
+                    const current = stack.pop();
+                    const key = `${current.x},${current.y}`;
+                    
+                    if (selected.has(key)) continue;
+                    if (current.x < 0 || current.x >= width || current.y < 0 || current.y >= height) continue;
+                    
+                    const pos = (current.y * width + current.x) * 4;
+                    const r = data[pos];
+                    const g = data[pos + 1];
+                    const b = data[pos + 2];
+                    const a = data[pos + 3];
+                    
+                    if (colorDistance(r, g, b, a, targetR, targetG, targetB, targetA) <= tolerance) {
+                        selected.add(key);
+                        
+                        // Add neighbors to stack
+                        stack.push({x: current.x - 1, y: current.y});
+                        stack.push({x: current.x + 1, y: current.y});
+                        stack.push({x: current.x, y: current.y - 1});
+                        stack.push({x: current.x, y: current.y + 1});
+                    }
+                }
+                
+                // Convert selected pixels to selection rectangle
+                if (selected.size > 0) {
+                    const points = Array.from(selected).map(key => {
+                        const [x, y] = key.split(',').map(Number);
+                        return {x, y};
+                    });
+                    
+                    const minX = Math.min(...points.map(p => p.x));
+                    const maxX = Math.max(...points.map(p => p.x));
+                    const minY = Math.min(...points.map(p => p.y));
+                    const maxY = Math.max(...points.map(p => p.y));
+                    
+                    this.state.selection = {
+                        x: minX,
+                        y: minY,
+                        width: maxX - minX + 1,
+                        height: maxY - minY + 1
+                    };
+                    
+                    this.renderCanvas();
+                    this.updateCreateBrushButton();
+                }
+            }
+            
+            // Lasso selection
+            startLasso(x, y) {
+                this.state.isLassoActive = true;
+                this.state.lassoPath = [{x, y}];
+                this.updateLassoPath();
+            }
+            
+            updateLasso(x, y) {
+                if (!this.state.isLassoActive) return;
+                
+                this.state.lassoPath.push({x, y});
+                this.updateLassoPath();
+            }
+            
+            finalizeLasso() {
+                if (!this.state.isLassoActive || this.state.lassoPath.length < 3) {
+                    this.clearLassoPath();
+                    return;
+                }
+                
+                // Convert lasso path to selection rectangle
+                const points = this.state.lassoPath;
+                const minX = Math.min(...points.map(p => p.x));
+                const maxX = Math.max(...points.map(p => p.x));
+                const minY = Math.min(...points.map(p => p.y));
+                const maxY = Math.max(...points.map(p => p.y));
+                
+                this.state.selection = {
+                    x: minX,
+                    y: minY,
+                    width: maxX - minX + 1,
+                    height: maxY - minY + 1
+                };
+                
+                this.clearLassoPath();
+                this.renderCanvas();
+                this.updateCreateBrushButton();
+            }
+            
+            updateLassoPath() {
+                const svg = this.lassoOverlay;
+                svg.innerHTML = '';
+                
+                if (this.state.lassoPath.length < 2) return;
+                
+                const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                let pathData = `M ${this.state.lassoPath[0].x} ${this.state.lassoPath[0].y}`;
+                
+                for (let i = 1; i < this.state.lassoPath.length; i++) {
+                    const point = this.state.lassoPath[i];
+                    pathData += ` L ${point.x} ${point.y}`;
+                }
+                
+                pathElement.setAttribute('d', pathData);
+                pathElement.setAttribute('class', 'lasso-path');
+                svg.appendChild(pathElement);
+            }
+            
+            clearLassoPath() {
+                this.state.isLassoActive = false;
+                this.state.lassoPath = [];
+                this.lassoOverlay.innerHTML = '';
+            }
+            
+            // Custom brush creation
+            createBrushFromSelection() {
+                if (!this.state.selection) return;
+                
+                const { x, y, width, height } = this.state.selection;
+                
+                // Create a new canvas for the brush pattern
+                const brushCanvas = document.createElement('canvas');
+                brushCanvas.width = width;
+                brushCanvas.height = height;
+                const ctx = brushCanvas.getContext('2d');
+                
+                // Copy the selected area
+                ctx.drawImage(
+                    this.mainCanvas,
+                    x, y, width, height,
+                    0, 0, width, height
+                );
+                
+                // Generate a unique name for the brush
+                const brushName = `Custom_${Date.now()}`;
+                
+                // Add to brush patterns
+                this.state.brushPatterns.set(brushName, brushCanvas);
+                
+                // Update UI
+                this.updateBrushPatternsUI();
+                
+                // Auto-select the new brush
+                this.state.activeBrushPattern = brushName;
+                this.updateBrushPatternsUI();
+            }
+            
+            clearActiveBrush() {
+                this.state.activeBrushPattern = null;
+                this.updateBrushPatternsUI();
+            }
+            
+            // Enhanced shape drawing with new isometric shapes
+            drawPlatform(ctx, x, y, width, height, depth) {
+                ctx.strokeStyle = this.state.color;
+                ctx.fillStyle = this.state.color;
+                ctx.lineWidth = 1;
+                
+                // Draw platform base
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillRect(x, y, width, height);
+                    ctx.globalAlpha = 1.0;
+                } else {
+                    ctx.strokeRect(x, y, width, height);
+                }
+                
+                // Draw isometric top
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + depth, y - depth / 2);
+                ctx.lineTo(x + width + depth, y - depth / 2);
+                ctx.lineTo(x + width, y);
+                ctx.closePath();
+                
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.6;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+                
+                // Draw isometric side
+                ctx.beginPath();
+                ctx.moveTo(x + width, y);
+                ctx.lineTo(x + width + depth, y - depth / 2);
+                ctx.lineTo(x + width + depth, y + height - depth / 2);
+                ctx.lineTo(x + width, y + height);
+                ctx.closePath();
+                
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.4;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+            }
+            
+            drawCylinder(ctx, x, y, diameter, height) {
+                ctx.strokeStyle = this.state.color;
+                ctx.fillStyle = this.state.color;
+                ctx.lineWidth = 1;
+                
+                const radius = diameter / 2;
+                
+                // Draw cylinder body
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillRect(x - radius, y, diameter, height);
+                    ctx.globalAlpha = 1.0;
+                } else {
+                    ctx.strokeRect(x - radius, y, diameter, height);
+                }
+                
+                // Draw top ellipse
+                ctx.beginPath();
+                ctx.ellipse(x, y, radius, radius / 2, 0, 0, Math.PI * 2);
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.6;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+                
+                // Draw bottom ellipse
+                ctx.beginPath();
+                ctx.ellipse(x, y + height, radius, radius / 2, 0, 0, Math.PI * 2);
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.4;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+            }
+            
+            drawPyramid(ctx, x, y, base, height) {
+                ctx.strokeStyle = this.state.color;
+                ctx.fillStyle = this.state.color;
+                ctx.lineWidth = 1;
+                
+                const centerX = x + base / 2;
+                const topX = centerX + height / 2;
+                const topY = y - height;
+                
+                // Draw base
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillRect(x, y, base, base / 2);
+                    ctx.globalAlpha = 1.0;
+                } else {
+                    ctx.strokeRect(x, y, base, base / 2);
+                }
+                
+                // Draw left face
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(topX, topY);
+                ctx.lineTo(x, y + base / 2);
+                ctx.closePath();
+                
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.6;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+                
+                // Draw right face
+                ctx.beginPath();
+                ctx.moveTo(x + base, y);
+                ctx.lineTo(topX, topY);
+                ctx.lineTo(x + base, y + base / 2);
+                ctx.closePath();
+                
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.4;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+            }
+            
+            drawSphere(ctx, x, y, radius) {
+                ctx.strokeStyle = this.state.color;
+                ctx.fillStyle = this.state.color;
+                ctx.lineWidth = 1;
+                
+                // Draw main circle
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                if (document.getElementById('fillShape').checked) {
+                    ctx.globalAlpha = 0.8;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+                ctx.stroke();
+                
+                // Draw highlight ellipse for 3D effect
+                ctx.beginPath();
+                ctx.ellipse(x - radius / 3, y - radius / 3, radius / 3, radius / 4, 0, 0, Math.PI * 2);
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            drawStairs(ctx, x, y, steps, width) {
+                ctx.strokeStyle = this.state.color;
+                ctx.fillStyle = this.state.color;
+                ctx.lineWidth = 1;
+                
+                const stepHeight = width / steps;
+                const stepDepth = width / steps;
+                
+                for (let i = 0; i < steps; i++) {
+                    const stepX = x + i * stepDepth;
+                    const stepY = y + i * stepHeight;
+                    
+                    // Draw step
+                    if (document.getElementById('fillShape').checked) {
+                        ctx.globalAlpha = 0.8 - (i * 0.1);
+                        ctx.fillRect(stepX, stepY, stepDepth, stepHeight);
+                        ctx.globalAlpha = 1.0;
+                    } else {
+                        ctx.strokeRect(stepX, stepY, stepDepth, stepHeight);
+                    }
+                    
+                    // Draw isometric top
+                    ctx.beginPath();
+                    ctx.moveTo(stepX, stepY);
+                    ctx.lineTo(stepX + stepDepth / 2, stepY - stepDepth / 4);
+                    ctx.lineTo(stepX + stepDepth + stepDepth / 2, stepY - stepDepth / 4);
+                    ctx.lineTo(stepX + stepDepth, stepY);
+                    ctx.closePath();
+                    
+                    if (document.getElementById('fillShape').checked) {
+                        ctx.globalAlpha = 0.6 - (i * 0.1);
+                        ctx.fill();
+                        ctx.globalAlpha = 1.0;
+                    }
+                    ctx.stroke();
+                }
             }
             
             drawLine(x0, y0, x1, y1) {
@@ -1427,7 +2201,7 @@
                 
                 this.state.color = `#${r}${g}${b}`;
                 document.getElementById('colorPicker').value = this.state.color;
-                this.updateColorPalette();
+                this.updateActiveColorSwatch();
                 
                 // Switch back to pencil tool
                 document.getElementById('pencilTool').click();
@@ -1535,11 +2309,13 @@
                 }
                 
                 this.renderCanvas();
+                this.updateCreateBrushButton();
             }
             
             clearSelection() {
                 this.state.selection = null;
                 this.renderCanvas();
+                this.updateCreateBrushButton();
             }
             
             copySelection() {
@@ -1605,6 +2381,7 @@
                 
                 this.renderCanvas();
                 this.saveState();
+                this.updateCreateBrushButton();
             }
             
             selectAll() {
@@ -1616,6 +2393,7 @@
                 };
                 
                 this.renderCanvas();
+                this.updateCreateBrushButton();
             }
             
             startMove(x, y) {
@@ -1703,36 +2481,60 @@
                 this.state.shapeEnd = { x, y };
                 this.renderCanvas();
                 
-                // Draw preview shape
-                if (this.state.tool === 'rectangle') {
-                    this.drawRectanglePreview();
-                } else if (this.state.tool === 'isocube') {
-                    this.drawIsoCubePreview();
+                // Draw preview shape based on selected type
+                const shapeType = document.getElementById('shapeType').value;
+                
+                switch (shapeType) {
+                    case 'rectangle':
+                        this.drawRectanglePreview();
+                        break;
+                    case 'isocube':
+                        this.drawIsoCubePreview();
+                        break;
+                    case 'platform':
+                        this.drawPlatformPreview();
+                        break;
+                    case 'cylinder':
+                        this.drawCylinderPreview();
+                        break;
+                    case 'pyramid':
+                        this.drawPyramidPreview();
+                        break;
+                    case 'sphere':
+                        this.drawSpherePreview();
+                        break;
+                    case 'stairs':
+                        this.drawStairsPreview();
+                        break;
                 }
             }
             
             finalizeShape() {
                 const ctx = this.state.layers[this.state.activeLayer].canvas.getContext('2d');
+                const shapeType = document.getElementById('shapeType').value;
                 
-                if (this.state.tool === 'rectangle') {
-                    const { x: x1, y: y1 } = this.state.shapeStart;
-                    const { x: x2, y: y2 } = this.state.shapeEnd;
-                    
-                    const x = Math.min(x1, x2);
-                    const y = Math.min(y1, y2);
-                    const width = Math.abs(x2 - x1);
-                    const height = Math.abs(y2 - y1);
-                    
-                    if (document.getElementById('fillShape').checked) {
-                        ctx.fillStyle = this.state.color;
-                        ctx.fillRect(x, y, width, height);
-                    } else {
-                        ctx.strokeStyle = this.state.color;
-                        ctx.lineWidth = this.state.lineWidth;
-                        ctx.strokeRect(x, y, width, height);
-                    }
-                } else if (this.state.tool === 'isocube') {
-                    this.drawIsoCube(ctx);
+                switch (shapeType) {
+                    case 'rectangle':
+                        this.drawRectangleShape(ctx);
+                        break;
+                    case 'isocube':
+                        this.drawIsoCube(ctx);
+                        break;
+                    case 'platform':
+                        this.drawPlatformShape(ctx);
+                        break;
+                    case 'cylinder':
+                        this.drawCylinderShape(ctx);
+                        break;
+                    case 'pyramid':
+                        this.drawPyramidShape(ctx);
+                        break;
+                    case 'sphere':
+                        this.drawSphereShape(ctx);
+                        break;
+                    case 'stairs':
+                        this.drawStairsShape(ctx);
+                        break;
                 }
                 
                 this.renderCanvas();
@@ -1758,6 +2560,25 @@
                     this.mainCtx.strokeStyle = this.state.color;
                     this.mainCtx.lineWidth = this.state.lineWidth;
                     this.mainCtx.strokeRect(x, y, width, height);
+                }
+            }
+            
+            drawRectangleShape(ctx) {
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = Math.min(x1, x2);
+                const y = Math.min(y1, y2);
+                const width = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                
+                if (document.getElementById('fillShape').checked) {
+                    ctx.fillStyle = this.state.color;
+                    ctx.fillRect(x, y, width, height);
+                } else {
+                    ctx.strokeStyle = this.state.color;
+                    ctx.lineWidth = this.state.lineWidth;
+                    ctx.strokeRect(x, y, width, height);
                 }
             }
             
@@ -1881,6 +2702,136 @@
                 ctx.stroke();
             }
             
+            drawPlatformPreview() {
+                if (!this.state.shapeStart || !this.state.shapeEnd) return;
+                
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = Math.min(x1, x2);
+                const y = Math.min(y1, y2);
+                const width = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                const depth = Math.min(width, height) / 4;
+                
+                this.drawPlatform(this.mainCtx, x, y, width, height, depth);
+            }
+            
+            drawPlatformShape(ctx) {
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = Math.min(x1, x2);
+                const y = Math.min(y1, y2);
+                const width = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                const depth = Math.min(width, height) / 4;
+                
+                this.drawPlatform(ctx, x, y, width, height, depth);
+            }
+            
+            drawCylinderPreview() {
+                if (!this.state.shapeStart || !this.state.shapeEnd) return;
+                
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = (x1 + x2) / 2;
+                const y = Math.min(y1, y2);
+                const diameter = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                
+                this.drawCylinder(this.mainCtx, x, y, diameter, height);
+            }
+            
+            drawCylinderShape(ctx) {
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = (x1 + x2) / 2;
+                const y = Math.min(y1, y2);
+                const diameter = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                
+                this.drawCylinder(ctx, x, y, diameter, height);
+            }
+            
+            drawPyramidPreview() {
+                if (!this.state.shapeStart || !this.state.shapeEnd) return;
+                
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = Math.min(x1, x2);
+                const y = Math.max(y1, y2);
+                const base = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                
+                this.drawPyramid(this.mainCtx, x, y, base, height);
+            }
+            
+            drawPyramidShape(ctx) {
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = Math.min(x1, x2);
+                const y = Math.max(y1, y2);
+                const base = Math.abs(x2 - x1);
+                const height = Math.abs(y2 - y1);
+                
+                this.drawPyramid(ctx, x, y, base, height);
+            }
+            
+            drawSpherePreview() {
+                if (!this.state.shapeStart || !this.state.shapeEnd) return;
+                
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = (x1 + x2) / 2;
+                const y = (y1 + y2) / 2;
+                const radius = Math.min(Math.abs(x2 - x1), Math.abs(y2 - y1)) / 2;
+                
+                this.drawSphere(this.mainCtx, x, y, radius);
+            }
+            
+            drawSphereShape(ctx) {
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = (x1 + x2) / 2;
+                const y = (y1 + y2) / 2;
+                const radius = Math.min(Math.abs(x2 - x1), Math.abs(y2 - y1)) / 2;
+                
+                this.drawSphere(ctx, x, y, radius);
+            }
+            
+            drawStairsPreview() {
+                if (!this.state.shapeStart || !this.state.shapeEnd) return;
+                
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = Math.min(x1, x2);
+                const y = Math.min(y1, y2);
+                const width = Math.abs(x2 - x1);
+                const steps = Math.max(3, Math.floor(width / 20));
+                
+                this.drawStairs(this.mainCtx, x, y, steps, width);
+            }
+            
+            drawStairsShape(ctx) {
+                const { x: x1, y: y1 } = this.state.shapeStart;
+                const { x: x2, y: y2 } = this.state.shapeEnd;
+                
+                const x = Math.min(x1, x2);
+                const y = Math.min(y1, y2);
+                const width = Math.abs(x2 - x1);
+                const steps = Math.max(3, Math.floor(width / 20));
+                
+                this.drawStairs(ctx, x, y, steps, width);
+            }
+            
             // Canvas navigation and zoom
             zoom(delta) {
                 const newZoom = Math.max(0.25, Math.min(20, this.state.zoom + delta));
@@ -1993,17 +2944,6 @@
                 this.saveState();
             }
             
-            updateColorPalette() {
-                // Update the active color in the palette
-                document.querySelectorAll('.color-swatch').forEach(swatch => {
-                    if (swatch.dataset.color === this.state.color) {
-                        swatch.classList.add('active');
-                    } else {
-                        swatch.classList.remove('active');
-                    }
-                });
-            }
-            
             // Canvas operations
             resizeCanvas() {
                 const width = parseInt(document.getElementById('canvasWidth').value);
@@ -2039,6 +2979,10 @@
                 this.gridCanvas.width = width;
                 this.gridCanvas.height = height;
                 
+                // Update SVG overlay size
+                this.lassoOverlay.setAttribute('width', width);
+                this.lassoOverlay.setAttribute('height', height);
+                
                 // Resize all layers
                 this.state.layers.forEach(layer => {
                     const newCanvas = document.createElement('canvas');
@@ -2068,6 +3012,8 @@
                     this.state.activeLayer = 0;
                     this.state.selection = null;
                     this.state.clipboard = null;
+                    this.state.brushPatterns.clear();
+                    this.state.activeBrushPattern = null;
                     
                     // Reset history
                     this.history = {
@@ -2077,7 +3023,9 @@
                     };
                     
                     // Initialize new canvas
+                    this.initializeBrushPatterns();
                     this.initializeLayers();
+                    this.updateBrushPatternsUI();
                     this.renderCanvas();
                     this.drawGrid();
                     this.saveState();
@@ -2087,7 +3035,7 @@
             saveProject() {
                 // Create a project object
                 const project = {
-                    version: '1.0',
+                    version: '2.0',
                     canvasSize: this.state.canvasSize,
                     backgroundColor: this.state.backgroundColor,
                     layers: this.state.layers.map(layer => {
@@ -2100,7 +3048,12 @@
                         };
                     }),
                     activeLayer: this.state.activeLayer,
-                    palette: this.palette,
+                    paletteTheme: this.state.paletteTheme,
+                    paletteVariant: this.state.paletteVariant,
+                    customBrushes: Array.from(this.state.brushPatterns.entries()).map(([name, canvas]) => ({
+                        name,
+                        data: canvas.toDataURL()
+                    })),
                     gridSettings: {
                         visible: this.state.gridVisible,
                         size: this.state.gridSize,
@@ -2118,7 +3071,7 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'isometric_pixel_art.iso';
+                a.download = 'enhanced_isometric_pixel_art.iso';
                 document.body.appendChild(a);
                 a.click();
                 
@@ -2155,7 +3108,7 @@
                 const url = exportCanvas.toDataURL('image/png');
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'isometric_pixel_art.png';
+                a.download = 'enhanced_isometric_pixel_art.png';
                 document.body.appendChild(a);
                 a.click();
                 
@@ -2247,3 +3200,4 @@
     </script>
 </body>
 </html>
+                    
