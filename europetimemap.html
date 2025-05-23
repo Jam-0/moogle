@@ -498,10 +498,8 @@
                 const response = await fetch(`https://en.wikipedia.org/w/api.php?` + new URLSearchParams({
                     action: 'query',
                     titles: titles.join('|'),
-                    prop: 'extracts',
-                    exintro: false,
-                    explaintext: true,
-                    exlimit: 'max',
+                    prop: 'info|pageprops',
+                    inprop: 'length',
                     format: 'json',
                     origin: '*'
                 }));
@@ -512,20 +510,9 @@
                 const metadata = {};
                 Object.values(pages).forEach(page => {
                     if (page.pageid && page.pageid !== -1) {
-                        const wordCount = page.extract ? page.extract.split(/\s+/).length : 0;
                         metadata[page.title] = {
-                            wordCount: wordCount || 5000 // Default average article length
-                        };
-                    }
-                });
-
-                state.cache.set(cacheKey, metadata);
-                return metadata;
-            } catch (error) {
-                log('Error fetching article metadata:', error);
-                return {};
-            }
-        } Estimate word count from byte length (rough approximation)
+                            length: page.length || 0,
+                            // Estimate word count from byte length (rough approximation)
                             wordCount: Math.floor((page.length || 0) / 5)
                         };
                     }
@@ -697,6 +684,9 @@
                     <div class="event-title">${event.text.substring(0, 100)}${event.text.length > 100 ? '...' : ''}</div>
                     <div class="event-metrics">
                         <span class="metric">📊 Score: ${(event.score * 100).toFixed(1)}</span>
+                        <span class="metric">👁️ Views: ${event.metrics.views.toLocaleString()}</span>
+                        <span class="metric">📝 Words: ${event.metrics.words.toLocaleString()}</span>
+                        <span class="metric">🔗 Articles: ${event.metrics.linkedArticles}</span>
                     </div>
                     <div class="event-details" id="details-${index}">
                         <div class="event-summary">${event.text}</div>
