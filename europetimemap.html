@@ -491,47 +491,33 @@
         async function fetchArticleMetadata(titles) {
             const metadata = {};
             
-            // Process in batches of 20 (API limit)
+            // Process in batches of 20 (API limit for extracts)
             for (let i = 0; i < titles.length; i += 20) {
                 const batch = titles.slice(i, i + 20);
-                const cacheKey = `metadata_${batch.join('|')}`;
                 
-                if (state.cache.has(cacheKey)) {
-                    Object.assign(metadata, state.cache.get(cacheKey));
-                    continue;
-                }
-
                 try {
                     const response = await fetch(`https://en.wikipedia.org/w/api.php?` + new URLSearchParams({
                         action: 'query',
                         titles: batch.join('|'),
-                        prop: 'extracts|info',
-                        exintro: false,
-                        explaintext: true,
-                        exlimit: 'max',
+                        prop: 'info',
                         inprop: 'length',
                         format: 'json',
                         origin: '*'
                     }));
 
                     const data = await response.json();
-                    const pages = data.query.pages;
-                    
-                    const batchMetadata = {};
-                    Object.values(pages).forEach(page => {
-                        if (page.pageid && page.pageid !== -1) {
-                            batchMetadata[page.title] = {
-                                wordCount: page.extract 
-                                    ? page.extract.split(/\s+/).length 
-                                    : Math.floor((page.length || 0) / 5) // Fallback: estimate from byte length
-                            };
-                        }
-                    });
-
-                    state.cache.set(cacheKey, batchMetadata);
-                    Object.assign(metadata, batchMetadata);
+                    if (data.query && data.query.pages) {
+                        Object.values(data.query.pages).forEach(page => {
+                            if (page.pageid && page.pageid !== -1) {
+                                // Estimate word count from byte length (5 bytes per word average)
+                                metadata[page.title] = {
+                                    wordCount: Math.floor((page.length || 0) / 5)
+                                };
+                            }
+                        });
+                    }
                 } catch (error) {
-                    log('Error fetching batch metadata:', error);
+                    log('Error fetching metadata batch:', error);
                 }
             }
             
