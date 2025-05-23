@@ -90,19 +90,33 @@
             object-fit: cover;
         }
         
-        /* Style for the clickable window */
+        /* Style for the clickable windows */
         .clickable-window {
             cursor: pointer;
             position: relative;
         }
         
-        .clickable-window::after {
+        .clickable-window.isopaint::after {
             content: 'IsoPaint';
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             background-color: rgba(233, 69, 96, 0.8);
+            color: white;
+            text-align: center;
+            padding: 3px 0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .clickable-window.europe-map::after {
+            content: 'Europe Map';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(83, 52, 131, 0.8);
             color: white;
             text-align: center;
             padding: 3px 0;
@@ -199,11 +213,26 @@
                     linkWindow.href = 'IsoPaint.html';
                     
                     const catWindow = document.createElement('div');
-                    catWindow.className = 'cat-window clickable-window';
+                    catWindow.className = 'cat-window clickable-window isopaint';
                     
                     const img = document.createElement('img');
                     img.src = catImageUrls[0];
                     img.alt = 'IsoPaint';
+                    
+                    catWindow.appendChild(img);
+                    linkWindow.appendChild(catWindow);
+                    skyscraper.appendChild(linkWindow);
+                } else if (i === 1) {
+                    // Second window is a link to europetimemap.html
+                    const linkWindow = document.createElement('a');
+                    linkWindow.href = 'europetimemap.html';
+                    
+                    const catWindow = document.createElement('div');
+                    catWindow.className = 'cat-window clickable-window europe-map';
+                    
+                    const img = document.createElement('img');
+                    img.src = catImageUrls[1];
+                    img.alt = 'Europe Time Map';
                     
                     catWindow.appendChild(img);
                     linkWindow.appendChild(catWindow);
