@@ -196,7 +196,11 @@
                 this.canvas = document.getElementById(canvasId);
                 this.ctx = this.canvas.getContext('2d');
                 this.gridSize = 20;
-                this.cellSize = this.canvas.width / this.gridSize;
+                
+                // Initialize canvas dimensions
+                this.baseCanvasSize = 400;
+                this.currentScale = 1;
+                this.cellSize = this.baseCanvasSize / this.gridSize;
                 
                 // Game state
                 this.obstacles = [];
@@ -204,6 +208,7 @@
                 this.direction = {x: 0, y: 1};
                 this.nextDirection = {x: 0, y: 1};
                 this.food = this.generateFood();
+                this.bonusFood = null;
                 this.score = 0;
                 this.foodsEaten = 0;
                 this.gameRunning = false;
@@ -211,7 +216,7 @@
                 
                 // Performance tracking
                 this.lastFrameTime = 0;
-                this.baseSpeed = 50; // Start very fast
+                this.baseSpeed = 50;
                 this.gameSpeed = 50;
                 
                 // Chain bonus tracking
@@ -220,9 +225,6 @@
                 
                 // Statistics
                 this.stats = this.loadStats();
-                
-                // Difficulty adjustment
-                this.recentGames = [];
                 
                 // Audio context
                 this.audioContext = null;
@@ -244,26 +246,30 @@
             playTone(frequency, duration = 100) {
                 if (!this.audioContext) return;
                 
-                const oscillator = this.audioContext.createOscillator();
-                const gainNode = this.audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(this.audioContext.destination);
-                
-                oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-                oscillator.type = 'square';
-                
-                gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration / 1000);
-                
-                oscillator.start(this.audioContext.currentTime);
-                oscillator.stop(this.audioContext.currentTime + duration / 1000);
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    oscillator.type = 'square';
+                    
+                    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration / 1000);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + duration / 1000);
+                } catch(e) {
+                    console.log('Audio playback failed');
+                }
             }
             
             generateInitialSnake() {
                 const snake = [];
                 for (let i = 0; i < 15; i++) {
-                    snake.push({x: 10, y: 14 - i}); // Start at y=14, go up to y=0
+                    snake.push({x: 10, y: 14 - i});
                 }
                 return snake;
             }
@@ -282,7 +288,6 @@
             }
             
             generateBonusFood() {
-                // Find hardest position (farthest from snake head)
                 const head = this.snake[0];
                 let hardestFood = null;
                 let maxDistance = 0;
@@ -306,10 +311,10 @@
             updateCanvasScale() {
                 let newScale = 1;
                 
-                if (this.score >= 300) newScale = 0.6; // -20% from 200 scale
-                else if (this.score >= 200) newScale = 0.8; // -10% from base
-                else if (this.score >= 100) newScale = 1.32; // +20% from 50 scale  
-                else if (this.score >= 50) newScale = 1.1; // +10%
+                if (this.score >= 300) newScale = 0.6;
+                else if (this.score >= 200) newScale = 0.8;
+                else if (this.score >= 100) newScale = 1.32;
+                else if (this.score >= 50) newScale = 1.1;
                 
                 if (newScale !== this.currentScale) {
                     this.currentScale = newScale;
@@ -442,6 +447,7 @@
             }
             
             restart() {
+                // Reset game state
                 this.snake = this.generateInitialSnake();
                 this.direction = {x: 0, y: 1};
                 this.nextDirection = {x: 0, y: 1};
@@ -451,27 +457,27 @@
                 this.score = 0;
                 this.foodsEaten = 0;
                 this.gameSpeed = this.baseSpeed;
-                this.currentScale = 1;
                 
-                // Reset canvas dimensions and context
+                // Reset canvas to original size
+                this.currentScale = 1;
                 this.canvas.width = this.baseCanvasSize;
                 this.canvas.height = this.baseCanvasSize;
-                this.cellSize = this.canvas.width / this.gridSize;
-                this.ctx = this.canvas.getContext('2d'); // Reinitialize context
+                this.cellSize = this.baseCanvasSize / this.gridSize;
                 
+                // Reset game flags
                 this.gameRunning = false;
                 this.gameOver = false;
                 
+                // Update UI
                 document.getElementById('gameOver').style.display = 'none';
                 this.updateDisplay();
-                this.render(); // Force initial render
+                this.updateProgress();
             }
             
             updateSpeed() {
                 if (this.score < 15) {
                     this.gameSpeed = 50;
                 } else {
-                    // Reduce speed by half instead of exponential after score 15
                     this.gameSpeed = 200 * Math.pow(0.96, this.score - 15);
                     
                     if ((this.score - 15) % 10 === 0 && this.score > 15) {
@@ -511,7 +517,7 @@
                 celebration.style.color = color;
                 celebration.style.display = 'block';
                 celebration.style.animation = 'none';
-                celebration.offsetHeight; // Trigger reflow
+                celebration.offsetHeight;
                 celebration.style.animation = 'celebrate 2s ease-out forwards';
                 
                 setTimeout(() => {
@@ -544,27 +550,23 @@
             update() {
                 if (!this.gameRunning || this.gameOver) return;
                 
-                // Update direction
                 this.direction = {...this.nextDirection};
                 
-                // Move snake
                 const head = {...this.snake[0]};
                 head.x += this.direction.x;
                 head.y += this.direction.y;
                 
-                // Check wall collision
+                // Check collisions
                 if (head.x < 0 || head.x >= this.gridSize || head.y < 0 || head.y >= this.gridSize) {
                     this.endGame();
                     return;
                 }
                 
-                // Check self collision
                 if (this.snake.some(segment => segment.x === head.x && segment.y === head.y)) {
                     this.endGame();
                     return;
                 }
                 
-                // Check obstacle collision
                 if (this.obstacles.some(obstacle => obstacle.x === head.x && obstacle.y === head.y)) {
                     this.endGame();
                     return;
@@ -589,7 +591,6 @@
                     this.foodsEaten++;
                     this.score += pointsGained;
                     
-                    // Every 5th apple generates bonus food
                     if (this.foodsEaten % 5 === 0 && !this.bonusFood) {
                         this.bonusFood = this.generateBonusFood();
                     }
@@ -612,12 +613,10 @@
                 this.gameRunning = false;
                 this.gameOver = true;
                 
-                // Play game over sound
                 this.playTone(220, 300);
                 setTimeout(() => this.playTone(196, 300), 300);
                 setTimeout(() => this.playTone(175, 500), 600);
                 
-                // Update statistics
                 this.updateStats();
                 
                 document.getElementById('finalScore').textContent = `Final Score: ${this.score}`;
@@ -636,14 +635,12 @@
                     this.stats.centuryCount++;
                 }
                 
-                // Update streak
                 if (this.score >= 50) {
                     this.stats.currentStreak++;
                 } else {
                     this.stats.currentStreak = 0;
                 }
                 
-                // Rolling average (last 20 games)
                 this.stats.recentScores = this.stats.recentScores || [];
                 this.stats.recentScores.push(this.score);
                 if (this.stats.recentScores.length > 20) {
@@ -695,19 +692,12 @@
             }
             
             render() {
-                // Clear canvas
                 this.ctx.fillStyle = '#0a3d2e';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 
                 // Draw snake
-                this.ctx.fillStyle = '#00ff41';
                 this.snake.forEach((segment, index) => {
-                    if (index === 0) {
-                        // Head slightly brighter
-                        this.ctx.fillStyle = '#44ff77';
-                    } else {
-                        this.ctx.fillStyle = '#00ff41';
-                    }
+                    this.ctx.fillStyle = index === 0 ? '#44ff77' : '#00ff41';
                     this.ctx.fillRect(
                         segment.x * this.cellSize,
                         segment.y * this.cellSize,
@@ -725,7 +715,7 @@
                     this.cellSize - 2
                 );
                 
-                // Draw bonus food with glow effect
+                // Draw bonus food
                 if (this.bonusFood) {
                     const time = Date.now() * 0.01;
                     const glowIntensity = Math.sin(time) * 0.3 + 0.7;
@@ -754,7 +744,7 @@
                     );
                 });
                 
-                // Draw starting message
+                // Draw start message
                 if (!this.gameRunning && !this.gameOver) {
                     this.ctx.fillStyle = '#00ff41';
                     this.ctx.font = '20px Courier New';
@@ -774,7 +764,6 @@
             }
         }
         
-        // Initialize game
         const game = new SnakeGame('gameCanvas');
     </script>
 </body>
