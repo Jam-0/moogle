@@ -90,6 +90,26 @@
             object-fit: cover;
         }
         
+        /* Style for the clickable window */
+        .clickable-window {
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .clickable-window::after {
+            content: 'IsoPaint';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(233, 69, 96, 0.8);
+            color: white;
+            text-align: center;
+            padding: 3px 0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
         /* Add some random lights to make it look like a building at night */
         .skyscraper::before {
             content: '';
@@ -173,16 +193,33 @@
             
             // Add the selected number of cat windows
             for (let i = 0; i < numberOfCats; i++) {
-                const catWindow = document.createElement('div');
-                catWindow.className = 'cat-window';
-                
-                const img = document.createElement('img');
-                // Use real cat image URLs instead of placeholders
-                img.src = catImageUrls[i % catImageUrls.length]; // Cycling through the array if we need more than available
-                img.alt = `Cat ${i+1}`;
-                
-                catWindow.appendChild(img);
-                skyscraper.appendChild(catWindow);
+                if (i === 0) {
+                    // First window is a link to IsoPaint.html
+                    const linkWindow = document.createElement('a');
+                    linkWindow.href = 'IsoPaint.html';
+                    
+                    const catWindow = document.createElement('div');
+                    catWindow.className = 'cat-window clickable-window';
+                    
+                    const img = document.createElement('img');
+                    img.src = catImageUrls[0];
+                    img.alt = 'IsoPaint';
+                    
+                    catWindow.appendChild(img);
+                    linkWindow.appendChild(catWindow);
+                    skyscraper.appendChild(linkWindow);
+                } else {
+                    // Regular cat windows
+                    const catWindow = document.createElement('div');
+                    catWindow.className = 'cat-window';
+                    
+                    const img = document.createElement('img');
+                    img.src = catImageUrls[i % catImageUrls.length];
+                    img.alt = `Cat ${i+1}`;
+                    
+                    catWindow.appendChild(img);
+                    skyscraper.appendChild(catWindow);
+                }
             }
             
             // Adjust skyscraper height based on number of cats
