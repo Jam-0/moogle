@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikipedia Year Events Explorer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8f9fa;
+            color: #202124;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #1a73e8;
+        }
+
+        .header p {
+            color: #5f6368;
+            font-size: 1.1rem;
+        }
+
+        .year-controls {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .year-display {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 300;
+            color: #1a73e8;
+            margin-bottom: 20px;
+        }
+
+        .slider-container {
+            margin-bottom: 20px;
+        }
+
+        .year-slider {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e8eaed;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            border-radius: 3px;
+        }
+
+        .year-slider:hover {
+            opacity: 1;
+        }
+
+        .year-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #1a73e8;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .year-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #1a73e8;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .quick-nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-nav button {
+            padding: 8px 16px;
+            border: 1px solid #dadce0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .quick-nav button:hover {
+            background: #f8f9fa;
+            border-color: #1a73e8;
+            color: #1a73e8;
+        }
+
+        .year-input-container {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .year-input {
+            padding: 8px 12px;
+            border: 2px solid #dadce0;
+            border-radius: 6px;
+            font-size: 1rem;
+            width: 120px;
+            text-align: center;
+        }
+
+        .year-input:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+
+        .events-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 30px;
+            min-height: 400px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 0;
+            color: #5f6368;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            text-align: center;
+            color: #d93025;
+            padding: 40px 0;
+        }
+
+        .event-item {
+            border-bottom: 1px solid #e8eaed;
+            padding: 20px 0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .event-item:last-child {
+            border-bottom: none;
+        }
+
+        .event-item:hover {
+            background-color: #f8f9fa;
+            margin: 0 -30px;
+            padding: 20px 30px;
+        }
+
+        .event-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #202124;
+            margin-bottom: 8px;
+        }
+
+        .event-metrics {
+            display: flex;
+            gap: 20px;
+            font-size: 0.85rem;
+            color: #5f6368;
+        }
+
+        .metric {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .event-details {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .event-details.active {
+            display: block;
+        }
+
+        .event-summary {
+            margin-bottom: 10px;
+            line-height: 1.8;
+        }
+
+        .wiki-link {
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .wiki-link:hover {
+            text-decoration: underline;
+        }
+
+        .status-bar {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #5f6368;
+        }
+
+        .prefetch-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #202124;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .prefetch-indicator.active {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Wikipedia Year Events Explorer</h1>
+            <p>Discover the most significant events in history, ranked by relevance and impact</p>
+        </div>
+
+        <div class="year-controls">
+            <div class="year-display" id="yearDisplay">2025</div>
+            <div class="slider-container">
+                <input type="range" min="1" max="2025" value="2025" class="year-slider" id="yearSlider">
+            </div>
+            <div class="quick-nav">
+                <button onclick="jumpToYear(1)">1 CE</button>
+                <button onclick="jumpToYear(476)">Fall of Rome</button>
+                <button onclick="jumpToYear(1066)">Norman Conquest</button>
+                <button onclick="jumpToYear(1492)">Columbus</button>
+                <button onclick="jumpToYear(1776)">US Independence</button>
+                <button onclick="jumpToYear(1914)">WWI</button>
+                <button onclick="jumpToYear(1969)">Moon Landing</button>
+                <button onclick="jumpToYear(2001)">9/11</button>
+                <button onclick="jumpToYear(2020)">COVID-19</button>
+            </div>
+            <div class="year-input-container">
+                <input type="number" min="1" max="2025" value="2025" class="year-input" id="yearInput" placeholder="Enter year">
+            </div>
+        </div>
+
+        <div class="events-container" id="eventsContainer">
+            <div class="loading">Loading events for 2025</div>
+        </div>
+
+        <div class="status-bar" id="statusBar"></div>
+        <div class="prefetch-indicator" id="prefetchIndicator">Pre-loading adjacent years...</div>
+    </div>
+
+    <script>
+        // Global state management (because Redux is overkill for this)
+        const state = {
+            currentYear: 2025,
+            cache: new Map(),
+            loading: false,
+            prefetchQueue: new Set(),
+            viewCountCache: new Map(),
+            debugMode: true // Because I need to see what's breaking
+        };
+
+        // Elements (cached because I'm not a barbarian)
+        const elements = {
+            yearDisplay: document.getElementById('yearDisplay'),
+            yearSlider: document.getElementById('yearSlider'),
+            yearInput: document.getElementById('yearInput'),
+            eventsContainer: document.getElementById('eventsContainer'),
+            statusBar: document.getElementById('statusBar'),
+            prefetchIndicator: document.getElementById('prefetchIndicator')
+        };
+
+        // Debounce function (because users are slider-happy)
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Log function (for my paranoid debugging needs)
+        function log(message, data = null) {
+            if (state.debugMode) {
+                console.log(`[YearExplorer] ${message}`, data || '');
+            }
+        }
+
+        // Update status bar (because users deserve transparency)
+        function updateStatus(message) {
+            elements.statusBar.textContent = message;
+        }
+
+        // Fetch Wikipedia page content
+        async function fetchYearPage(year) {
+            const cacheKey = `page_${year}`;
+            if (state.cache.has(cacheKey)) {
+                log(`Using cached data for year ${year}`);
+                return state.cache.get(cacheKey);
+            }
+
+            try {
+                const response = await fetch(`https://en.wikipedia.org/w/api.php?` + new URLSearchParams({
+                    action: 'parse',
+                    page: year.toString(),
+                    prop: 'text|sections',
+                    format: 'json',
+                    origin: '*'
+                }));
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.info);
+
+                state.cache.set(cacheKey, data);
+                return data;
+            } catch (error) {
+                log(`Error fetching year ${year}:`, error);
+                throw error;
+            }
+        }
+
+        // Extract events from page content (the parsing nightmare begins)
+        function extractEvents(pageData) {
+            const html = pageData.parse.text['*'];
+            const sections = pageData.parse.sections;
+            
+            // Find events section (because Wikipedia editors can't agree on naming)
+            const eventSection = sections.find(s => 
+                /^(events|major events|notable events|significant events|chronology|timeline)/i.test(s.line)
+            );
+
+            if (!eventSection) {
+                log('No events section found, attempting fallback parsing');
+                return extractEventsFromHTML(html);
+            }
+
+            // This is where we'd normally use a proper HTML parser
+            // But we're in a browser, so let's create a temporary DOM
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+
+            const events = [];
+            
+            // Find all list items that look like events
+            const listItems = tempDiv.querySelectorAll('ul li');
+            
+            listItems.forEach(li => {
+                const text = li.textContent.trim();
+                
+                // Skip births, deaths, and other non-events
+                if (/^(January|February|March|April|May|June|July|August|September|October|November|December)/i.test(text) ||
+                    text.length < 20 || // Too short to be meaningful
+                    /^\d+\s*–/.test(text)) { // Likely a birth/death entry
+                    
+                    // Extract actual events
+                    const links = li.querySelectorAll('a[href^="/wiki/"]:not([href*=":"])');
+                    if (links.length > 0) {
+                        events.push({
+                            text: text,
+                            links: Array.from(links).map(a => ({
+                                title: a.title || a.textContent,
+                                href: a.href
+                            })),
+                            wordCount: text.split(/\s+/).length,
+                            referenceCount: (text.match(/\[\d+\]/g) || []).length
+                        });
+                    }
+                }
+            });
+
+            return events;
+        }
+
+        // Fallback event extraction (when section parsing fails)
+        function extractEventsFromHTML(html) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            const events = [];
+            
+            // Try multiple selectors for different Wikipedia page structures
+            const selectors = ['ul li', 'p', 'dl dd'];
+            
+            selectors.forEach(selector => {
+                const elements = tempDiv.querySelectorAll(selector);
+                
+                elements.forEach(el => {
+                    const text = el.textContent.trim();
+                    
+                    // More flexible filtering for historical entries
+                    if (text.length > 30 && 
+                        !text.match(/^(See also|For other|External links|References)/i) &&
+                        !text.match(/^\d{3,4}$/)) { // Skip year-only entries
+                        
+                        const links = el.querySelectorAll('a[href^="/wiki/"]:not([href*=":"]):not([href*="Help"])');
+                        
+                        if (links.length > 0 || text.match(/\d{3,4}/)) { // Has links or contains years
+                            events.push({
+                                text: text.substring(0, 300),
+                                links: Array.from(links).slice(0, 5).map(a => ({
+                                    title: a.title || a.textContent,
+                                    href: a.getAttribute('href')
+                                })),
+                                wordCount: text.split(/\s+/).length,
+                                referenceCount: (text.match(/\[\d+\]/g) || []).length
+                            });
+                        }
+                    }
+                });
+            });
+
+            // Deduplicate events with similar text
+            const uniqueEvents = [];
+            events.forEach(event => {
+                if (!uniqueEvents.some(e => e.text.substring(0, 50) === event.text.substring(0, 50))) {
+                    uniqueEvents.push(event);
+                }
+            });
+
+            return uniqueEvents;
+        }
+
+        // Fetch view counts (because popularity matters, apparently)
+        async function fetchViewCounts(articleTitles) {
+            const titlesToFetch = articleTitles.filter(title => !state.viewCountCache.has(title));
+            
+            if (titlesToFetch.length === 0) {
+                return articleTitles.map(title => ({
+                    title,
+                    views: state.viewCountCache.get(title) || 0
+                }));
+            }
+
+            // Calculate date range (last 30 days)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            
+            const formatDate = (date) => {
+                return date.toISOString().split('T')[0].replace(/-/g, '');
+            };
+
+            try {
+                // Batch requests (up to 50 at a time, as per the holy specifications)
+                const results = [];
+                for (let i = 0; i < titlesToFetch.length; i += 50) {
+                    const batch = titlesToFetch.slice(i, i + 50);
+                    const promises = batch.map(async title => {
+                        try {
+                            const response = await fetch(
+                                `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents/${encodeURIComponent(title)}/daily/${formatDate(startDate)}/${formatDate(endDate)}`
+                            );
+                            
+                            if (!response.ok) return { title, views: 0 };
+                            
+                            const data = await response.json();
+                            const totalViews = data.items.reduce((sum, item) => sum + item.views, 0);
+                            state.viewCountCache.set(title, totalViews);
+                            return { title, views: totalViews };
+                        } catch {
+                            return { title, views: 0 };
+                        }
+                    });
+                    
+                    results.push(...await Promise.all(promises));
+                    
+                    // Rate limiting pause (because we're polite)
+                    if (i + 50 < titlesToFetch.length) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+
+                return articleTitles.map(title => 
+                    results.find(r => r.title === title) || { title, views: state.viewCountCache.get(title) || 0 }
+                );
+            } catch (error) {
+                log('Error fetching view counts:', error);
+                return articleTitles.map(title => ({ title, views: 0 }));
+            }
+        }
+
+        // Calculate event scores (the magic formula)
+        async function scoreAndRankEvents(events) {
+            if (events.length === 0) return [];
+
+            // Get view counts for all linked articles
+            const allTitles = events.flatMap(e => e.links.map(l => l.title));
+            const viewCounts = await fetchViewCounts(allTitles);
+            const viewCountMap = new Map(viewCounts.map(v => [v.title, v.views]));
+
+            // Normalize metrics (because comparing apples to space stations is hard)
+            const wordCounts = events.map(e => e.wordCount);
+            const maxWords = Math.max(...wordCounts);
+            const minWords = Math.min(...wordCounts);
+
+            const refCounts = events.map(e => e.referenceCount);
+            const maxRefs = Math.max(...refCounts) || 1;
+            const minRefs = Math.min(...refCounts);
+
+            const allViews = events.map(e => 
+                Math.max(...e.links.map(l => viewCountMap.get(l.title) || 0))
+            );
+            const maxViews = Math.max(...allViews) || 1;
+            const minViews = Math.min(...allViews);
+
+            // Calculate scores
+            const scoredEvents = events.map(event => {
+                const primaryArticleViews = Math.max(
+                    ...event.links.map(l => viewCountMap.get(l.title) || 0)
+                );
+
+                // Normalize to 0-1 range
+                const normalizedWords = (event.wordCount - minWords) / (maxWords - minWords || 1);
+                const normalizedRefs = (event.referenceCount - minRefs) / (maxRefs - minRefs || 1);
+                const normalizedViews = (primaryArticleViews - minViews) / (maxViews - minViews || 1);
+
+                // Apply weights (as specified by the prompt overlord)
+                const score = (normalizedWords * 0.35) + 
+                             (normalizedViews * 0.40) + 
+                             (normalizedRefs * 0.25);
+
+                return {
+                    ...event,
+                    score,
+                    viewCount: primaryArticleViews,
+                    metrics: {
+                        words: event.wordCount,
+                        views: primaryArticleViews,
+                        references: event.referenceCount
+                    }
+                };
+            });
+
+            // Sort by score and return top 20
+            return scoredEvents
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 20);
+        }
+
+        // Display events (the moment of truth)
+        function displayEvents(events, year) {
+            if (events.length === 0) {
+                elements.eventsContainer.innerHTML = `
+                    <div class="error">
+                        No structured events found for year ${year}.<br>
+                        <small>Early historical years often lack detailed Wikipedia entries.</small><br>
+                        <button onclick="loadYear(${year})" style="margin-top: 10px; padding: 8px 16px; border: 1px solid #dadce0; background: white; border-radius: 6px; cursor: pointer;">Retry</button>
+                        <button onclick="window.open('https://en.wikipedia.org/wiki/${year}', '_blank')" style="margin-top: 10px; margin-left: 10px; padding: 8px 16px; border: 1px solid #1a73e8; background: #1a73e8; color: white; border-radius: 6px; cursor: pointer;">View on Wikipedia</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const eventsHTML = events.map((event, index) => `
+                <div class="event-item" onclick="toggleEventDetails(${index})">
+                    <div class="event-title">${event.text.substring(0, 100)}${event.text.length > 100 ? '...' : ''}</div>
+                    <div class="event-metrics">
+                        <span class="metric">📊 Score: ${(event.score * 100).toFixed(1)}</span>
+                        <span class="metric">👁️ Views: ${event.metrics.views.toLocaleString()}</span>
+                        <span class="metric">📝 Words: ${event.metrics.words}</span>
+                        <span class="metric">📚 Refs: ${event.metrics.references}</span>
+                    </div>
+                    <div class="event-details" id="details-${index}">
+                        <div class="event-summary">${event.text}</div>
+                        <div>
+                            ${event.links.slice(0, 3).map(link => 
+                                `<a href="https://en.wikipedia.org${link.href}" target="_blank" class="wiki-link">
+                                    📖 ${link.title}
+                                </a>`
+                            ).join(' • ')}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            elements.eventsContainer.innerHTML = eventsHTML;
+            updateStatus(`Showing top ${events.length} events for year ${year}`);
+        }
+
+        // Toggle event details
+        window.toggleEventDetails = function(index) {
+            const details = document.getElementById(`details-${index}`);
+            details.classList.toggle('active');
+        };
+
+        // Load events for a year
+        async function loadYear(year) {
+            if (state.loading) return;
+            
+            state.loading = true;
+            state.currentYear = year;
+            elements.eventsContainer.innerHTML = `<div class="loading">Loading events for ${year}</div>`;
+            updateStatus('Fetching Wikipedia data...');
+
+            try {
+                const pageData = await fetchYearPage(year);
+                updateStatus('Extracting events...');
+                
+                const events = extractEvents(pageData);
+                updateStatus(`Found ${events.length} events, calculating relevance...`);
+                
+                const rankedEvents = await scoreAndRankEvents(events);
+                displayEvents(rankedEvents, year);
+                
+                // Prefetch adjacent years (because anticipation is key)
+                prefetchAdjacentYears(year);
+            } catch (error) {
+                elements.eventsContainer.innerHTML = `
+                    <div class="error">
+                        Failed to load events for year ${year}.<br>
+                        Error: ${error.message}<br>
+                        <button onclick="loadYear(${year})" style="margin-top: 10px;">Retry</button>
+                    </div>
+                `;
+                updateStatus('Error loading data');
+            } finally {
+                state.loading = false;
+            }
+        }
+
+        // Prefetch adjacent years
+        async function prefetchAdjacentYears(year) {
+            const yearsToPrefetch = [year - 1, year + 1].filter(y => y >= 1 && y <= 2025);
+            
+            for (const y of yearsToPrefetch) {
+                if (!state.cache.has(`page_${y}`) && !state.prefetchQueue.has(y)) {
+                    state.prefetchQueue.add(y);
+                    
+                    // Show prefetch indicator
+                    elements.prefetchIndicator.classList.add('active');
+                    
+                    fetchYearPage(y)
+                        .then(() => {
+                            log(`Prefetched year ${y}`);
+                            state.prefetchQueue.delete(y);
+                            if (state.prefetchQueue.size === 0) {
+                                elements.prefetchIndicator.classList.remove('active');
+                            }
+                        })
+                        .catch(error => {
+                            log(`Failed to prefetch year ${y}:`, error);
+                            state.prefetchQueue.delete(y);
+                        });
+                }
+            }
+        }
+
+        // Event handlers
+        const debouncedLoadYear = debounce(loadYear, 300);
+
+        elements.yearSlider.addEventListener('input', (e) => {
+            const year = parseInt(e.target.value);
+            elements.yearDisplay.textContent = year;
+            elements.yearInput.value = year;
+            debouncedLoadYear(year);
+        });
+
+        elements.yearInput.addEventListener('change', (e) => {
+            const year = Math.max(1, Math.min(2025, parseInt(e.target.value) || 1));
+            elements.yearSlider.value = year;
+            elements.yearDisplay.textContent = year;
+            loadYear(year);
+        });
+
+        // Jump to year function
+        window.jumpToYear = function(year) {
+            elements.yearSlider.value = year;
+            elements.yearInput.value = year;
+            elements.yearDisplay.textContent = year;
+            loadYear(year);
+        };
+
+        // Initialize (the moment of truth)
+        loadYear(2025);
+
+        // Console easter egg (because why not)
+        console.log('%c🎓 Wikipedia Year Events Explorer', 'font-size: 20px; color: #1a73e8;');
+        console.log('%cBuilt with caffeine, skepticism, and an unhealthy obsession with historical ranking algorithms', 'font-style: italic;');
+    </script>
+</body>
+</html>
