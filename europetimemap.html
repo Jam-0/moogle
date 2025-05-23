@@ -489,39 +489,42 @@
 
         // Fetch article metadata (word count, references)
         async function fetchArticleMetadata(titles) {
-            const metadata = {};
-            
-            // Process in batches of 20 (API limit for extracts)
-            for (let i = 0; i < titles.length; i += 20) {
-                const batch = titles.slice(i, i + 20);
-                
-                try {
-                    const response = await fetch(`https://en.wikipedia.org/w/api.php?` + new URLSearchParams({
-                        action: 'query',
-                        titles: batch.join('|'),
-                        prop: 'info',
-                        inprop: 'length',
-                        format: 'json',
-                        origin: '*'
-                    }));
-
-                    const data = await response.json();
-                    if (data.query && data.query.pages) {
-                        Object.values(data.query.pages).forEach(page => {
-                            if (page.pageid && page.pageid !== -1) {
-                                // Estimate word count from byte length (5 bytes per word average)
-                                metadata[page.title] = {
-                                    wordCount: Math.floor((page.length || 0) / 5)
-                                };
-                            }
-                        });
-                    }
-                } catch (error) {
-                    log('Error fetching metadata batch:', error);
-                }
+            const cacheKey = `metadata_${titles.join('|')}`;
+            if (state.cache.has(cacheKey)) {
+                return state.cache.get(cacheKey);
             }
-            
-            return metadata;
+
+            try {
+                const response = await fetch(`https://en.wikipedia.org/w/api.php?` + new URLSearchParams({
+                    action: 'query',
+                    titles: titles.join('|'),
+                    prop: 'extracts',
+                    exintro: false,
+                    explaintext: true,
+                    exlimit: 'max',
+                    format: 'json',
+                    origin: '*'
+                }));
+
+                const data = await response.json();
+                const pages = data.query.pages;
+                
+                const metadata = {};
+                Object.values(pages).forEach(page => {
+                    if (page.pageid && page.pageid !== -1) {
+                        const wordCount = page.extract ? page.extract.split(/\s+/).length : 0;
+                        metadata[page.title] = {
+                            wordCount: wordCount || 5000 // Default average article length
+                        };
+                    }
+                });
+
+                state.cache.set(cacheKey, metadata);
+                return metadata;
+            } catch (error) {
+                log('Error fetching article metadata:', error);
+                return {};
+            }
         } Estimate word count from byte length (rough approximation)
                             wordCount: Math.floor((page.length || 0) / 5)
                         };
@@ -694,9 +697,6 @@
                     <div class="event-title">${event.text.substring(0, 100)}${event.text.length > 100 ? '...' : ''}</div>
                     <div class="event-metrics">
                         <span class="metric">📊 Score: ${(event.score * 100).toFixed(1)}</span>
-                        <span class="metric">👁️ Views: ${event.metrics.views.toLocaleString()}</span>
-                        <span class="metric">📝 Words: ${event.metrics.words.toLocaleString()}</span>
-                        <span class="metric">🔗 Articles: ${event.metrics.linkedArticles}</span>
                     </div>
                     <div class="event-details" id="details-${index}">
                         <div class="event-summary">${event.text}</div>
