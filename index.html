@@ -124,6 +124,20 @@
             font-weight: bold;
         }
 
+        .clickable-window.snake-game::after {
+            content: 'Cricket Snake';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 255, 65, 0.8);
+            color: white;
+            text-align: center;
+            padding: 3px 0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
         /* Add some random lights to make it look like a building at night */
         .skyscraper::before {
             content: '';
@@ -233,6 +247,21 @@
                     const img = document.createElement('img');
                     img.src = catImageUrls[1];
                     img.alt = 'Europe Time Map';
+                    
+                    catWindow.appendChild(img);
+                    linkWindow.appendChild(catWindow);
+                    skyscraper.appendChild(linkWindow);
+                } else if (i === 2) {
+                    // Third window is a link to csnake.html
+                    const linkWindow = document.createElement('a');
+                    linkWindow.href = 'csnake.html';
+                    
+                    const catWindow = document.createElement('div');
+                    catWindow.className = 'cat-window clickable-window snake-game';
+                    
+                    const img = document.createElement('img');
+                    img.src = catImageUrls[2];
+                    img.alt = 'Cricket Snake';
                     
                     catWindow.appendChild(img);
                     linkWindow.appendChild(catWindow);
