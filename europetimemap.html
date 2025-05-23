@@ -682,11 +682,6 @@
             const eventsHTML = events.map((event, index) => `
                 <div class="event-item" onclick="toggleEventDetails(${index})">
                     <div class="event-title">${event.text.substring(0, 100)}${event.text.length > 100 ? '...' : ''}</div>
-                    <div class="event-metrics">
-                        <span class="metric">👁️ Views: ${event.metrics.views.toLocaleString()}</span>
-                        <span class="metric">📝 Words: ${event.metrics.words.toLocaleString()}</span>
-                        <span class="metric">🔗 Articles: ${event.metrics.linkedArticles}</span>
-                    </div>
                     <div class="event-details" id="details-${index}">
                         <div class="event-summary">${event.text}</div>
                         <div>
