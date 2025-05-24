@@ -138,6 +138,20 @@
             font-weight: bold;
         }
 
+        .clickable-window.world-mood::after {
+            content: 'World Mood';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(255, 215, 0, 0.8);
+            color: black;
+            text-align: center;
+            padding: 3px 0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
         /* Add some random lights to make it look like a building at night */
         .skyscraper::before {
             content: '';
@@ -262,6 +276,21 @@
                     const img = document.createElement('img');
                     img.src = catImageUrls[2];
                     img.alt = 'Cricket Snake';
+                    
+                    catWindow.appendChild(img);
+                    linkWindow.appendChild(catWindow);
+                    skyscraper.appendChild(linkWindow);
+                } else if (i === 3) {
+                    // Fourth window is World Mood Tracker
+                    const linkWindow = document.createElement('a');
+                    linkWindow.href = 'world-mood-tracker.html';
+                    
+                    const catWindow = document.createElement('div');
+                    catWindow.className = 'cat-window clickable-window world-mood';
+                    
+                    const img = document.createElement('img');
+                    img.src = catImageUrls[3];
+                    img.alt = 'World Mood';
                     
                     catWindow.appendChild(img);
                     linkWindow.appendChild(catWindow);
