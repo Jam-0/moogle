@@ -2,21 +2,21 @@
   "world": {
     "region": "world",
     "date": "2025-05-24",
-    "time": "09:39:49",
+    "time": "09:41:11",
     "dominant_emotions": [
       "neutral"
     ],
     "sentiment_score": 0,
-    "weather_metaphor": "partly cloudy and holding steady",
+    "weather_metaphor": "steady weather and holding steady",
     "momentum": "and steady",
     "momentum_icon": "→",
     "sample_size": 0,
-    "last_updated": "2025-05-24T09:39:50.023Z"
+    "last_updated": "2025-05-24T09:41:11.012Z"
   },
   "usa": {
     "region": "usa",
     "date": "2025-05-24",
-    "time": "09:39:51",
+    "time": "09:41:12",
     "dominant_emotions": [
       "neutral"
     ],
@@ -25,12 +25,12 @@
     "momentum": "and steady",
     "momentum_icon": "→",
     "sample_size": 0,
-    "last_updated": "2025-05-24T09:39:51.701Z"
+    "last_updated": "2025-05-24T09:41:12.675Z"
   },
   "canada": {
     "region": "canada",
     "date": "2025-05-24",
-    "time": "09:39:53",
+    "time": "09:41:14",
     "dominant_emotions": [
       "neutral"
     ],
@@ -39,54 +39,12 @@
     "momentum": "and steady",
     "momentum_icon": "→",
     "sample_size": 0,
-    "last_updated": "2025-05-24T09:39:53.385Z"
+    "last_updated": "2025-05-24T09:41:14.322Z"
   },
   "australia-nz": {
     "region": "australia-nz",
     "date": "2025-05-24",
-    "time": "09:39:55",
-    "dominant_emotions": [
-      "neutral"
-    ],
-    "sentiment_score": 0,
-    "weather_metaphor": "mild conditions and holding steady",
-    "momentum": "and steady",
-    "momentum_icon": "→",
-    "sample_size": 0,
-    "last_updated": "2025-05-24T09:39:55.062Z"
-  },
-  "europe": {
-    "region": "europe",
-    "date": "2025-05-24",
-    "time": "09:39:56",
-    "dominant_emotions": [
-      "neutral"
-    ],
-    "sentiment_score": 0,
-    "weather_metaphor": "mild conditions and holding steady",
-    "momentum": "and steady",
-    "momentum_icon": "→",
-    "sample_size": 0,
-    "last_updated": "2025-05-24T09:39:56.738Z"
-  },
-  "asia": {
-    "region": "asia",
-    "date": "2025-05-24",
-    "time": "09:39:58",
-    "dominant_emotions": [
-      "neutral"
-    ],
-    "sentiment_score": 0,
-    "weather_metaphor": "steady weather and holding steady",
-    "momentum": "and steady",
-    "momentum_icon": "→",
-    "sample_size": 0,
-    "last_updated": "2025-05-24T09:39:58.418Z"
-  },
-  "south-america": {
-    "region": "south-america",
-    "date": "2025-05-24",
-    "time": "09:40:00",
+    "time": "09:41:15",
     "dominant_emotions": [
       "neutral"
     ],
@@ -95,6 +53,48 @@
     "momentum": "and steady",
     "momentum_icon": "→",
     "sample_size": 0,
-    "last_updated": "2025-05-24T09:40:00.094Z"
+    "last_updated": "2025-05-24T09:41:15.961Z"
+  },
+  "europe": {
+    "region": "europe",
+    "date": "2025-05-24",
+    "time": "09:41:17",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "mild conditions and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T09:41:17.612Z"
+  },
+  "asia": {
+    "region": "asia",
+    "date": "2025-05-24",
+    "time": "09:41:19",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "partly cloudy and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T09:41:19.266Z"
+  },
+  "south-america": {
+    "region": "south-america",
+    "date": "2025-05-24",
+    "time": "09:41:20",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "mild conditions and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T09:41:20.916Z"
   }
 }
