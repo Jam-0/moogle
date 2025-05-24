@@ -344,6 +344,12 @@
             .project-card {
                 padding: 20px;
             }
+
+            .moogle-mascot {
+                width: 80px;
+                height: 80px;
+                margin-bottom: 15px;
+            }
         }
 
         /* Loading screen effect */
@@ -354,6 +360,48 @@
 
         .container {
             animation: fadeIn 1s ease-out;
+        }
+
+        .header-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .moogle-mascot {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 20px;
+            filter: 
+                drop-shadow(0 0 15px #ff0096)
+                drop-shadow(0 0 25px #00ffff)
+                drop-shadow(0 0 35px rgba(255, 0, 150, 0.3));
+            animation: moogleFloat 4s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+
+        .moogle-mascot:hover {
+            transform: scale(1.1);
+            filter: 
+                drop-shadow(0 0 25px #ff0096)
+                drop-shadow(0 0 35px #00ffff)
+                drop-shadow(0 0 45px rgba(255, 0, 150, 0.5));
+        }
+
+        @keyframes moogleFloat {
+            0%, 100% { 
+                transform: translateY(0) rotate(-2deg); 
+            }
+            25% { 
+                transform: translateY(-8px) rotate(1deg); 
+            }
+            50% { 
+                transform: translateY(-12px) rotate(0deg); 
+            }
+            75% { 
+                transform: translateY(-8px) rotate(-1deg); 
+            }
         }
 
         .project-card {
@@ -368,7 +416,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>MOOGLE</h1>
+        <div class="header-section">
+            <img src="Moogle.png" alt="Moogle" class="moogle-mascot">
+            <h1>MOOGLE</h1>
+        </div>
         <p class="subtitle">Cyber Archive Terminal</p>
         
         <div class="projects-grid">
