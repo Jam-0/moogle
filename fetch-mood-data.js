@@ -1,182 +1,135 @@
-// fetch-mood-data.js - Fixed version with proper authentication
+// fetch-words.js - Fetches words from Bluesky posts
 const fs = require('fs').promises;
-const path = require('path');
 const fetch = require('node-fetch');
 
-const config = {
-    handle: process.env.BLUESKY_HANDLE,
-    appPassword: process.env.BLUESKY_PASSWORD
-};
-
-class BlueSkyAuthenticatedClient {
+class BlueskyWordFetcher {
     constructor() {
+        this.handle = process.env.BLUESKY_HANDLE;
+        this.password = process.env.BLUESKY_PASSWORD;
         this.accessToken = null;
-        this.refreshToken = null;
-        this.tokenExpiry = null;
-        this.session = null;
+        this.stopWords = new Set([
+            'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have',
+            'i', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you',
+            'do', 'at', 'this', 'but', 'his', 'by', 'from', 'they',
+            'we', 'say', 'her', 'she', 'or', 'an', 'will', 'my', 'one',
+            'all', 'would', 'there', 'their', 'what', 'so', 'up', 'out',
+            'if', 'about', 'who', 'get', 'which', 'go', 'me', 'when',
+            'https', 'com', 'http', 'www'
+        ]);
     }
 
     async authenticate() {
-        if (!config.handle || !config.appPassword) {
-            console.log('❌ No Bluesky credentials found in GitHub Secrets');
-            console.log('   Please add BLUESKY_HANDLE and BLUESKY_PASSWORD to repository secrets');
+        if (!this.handle || !this.password) {
+            console.log('No credentials provided');
             return false;
         }
 
         try {
-            console.log(`🔐 Authenticating with Bluesky as ${config.handle}...`);
-            
             const response = await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'WorldMoodTracker/1.0'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    identifier: config.handle,
-                    password: config.appPassword
+                    identifier: this.handle,
+                    password: this.password
                 })
             });
 
-            const responseText = await response.text();
-            
-            if (!response.ok) {
-                console.error(`❌ Authentication failed: ${response.status} ${response.statusText}`);
-                console.error('Response:', responseText.substring(0, 200));
-                return false;
-            }
-
-            const data = JSON.parse(responseText);
-            if (data.accessJwt && data.refreshJwt) {
+            if (response.ok) {
+                const data = await response.json();
                 this.accessToken = data.accessJwt;
-                this.refreshToken = data.refreshJwt;
-                this.session = data;
-                // Tokens typically expire after 2 hours
-                this.tokenExpiry = Date.now() + (2 * 60 * 60 * 1000);
-                
-                console.log('✅ Successfully authenticated with Bluesky');
-                console.log(`   Access token expires in ~2 hours`);
-                return true;
-            } else {
-                console.error('❌ No access tokens in authentication response');
-                return false;
-            }
-        } catch (error) {
-            console.error('❌ Authentication error:', error.message);
-            return false;
-        }
-    }
-
-    async refreshAccessToken() {
-        if (!this.refreshToken) {
-            console.log('⚠️  No refresh token available, re-authenticating...');
-            return await this.authenticate();
-        }
-
-        try {
-            console.log('🔄 Refreshing access token...');
-            
-            const response = await fetch('https://bsky.social/xrpc/com.atproto.server.refreshSession', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.refreshToken}`,
-                    'User-Agent': 'WorldMoodTracker/1.0'
-                }
-            });
-
-            if (!response.ok) {
-                console.log('⚠️  Token refresh failed, re-authenticating...');
-                return await this.authenticate();
-            }
-
-            const data = await response.json();
-            if (data.accessJwt) {
-                this.accessToken = data.accessJwt;
-                this.refreshToken = data.refreshJwt || this.refreshToken;
-                this.tokenExpiry = Date.now() + (2 * 60 * 60 * 1000);
-                
-                console.log('✅ Access token refreshed successfully');
                 return true;
             }
         } catch (error) {
-            console.error('❌ Token refresh error:', error.message);
-            return await this.authenticate();
+            console.error('Auth failed:', error.message);
         }
+        return false;
     }
 
-    async ensureValidToken() {
-        // Check if token is expired or will expire soon (15 minutes buffer)
-        const bufferTime = 15 * 60 * 1000; // 15 minutes
-        
-        if (!this.accessToken || !this.tokenExpiry || Date.now() > (this.tokenExpiry - bufferTime)) {
-            console.log('🔄 Token expired or expiring soon, refreshing...');
-            return await this.refreshAccessToken();
-        }
-        
-        return true;
-    }
-
-    async searchPosts(query, limit = 25) {
-        // Ensure we have a valid token
-        const hasValidToken = await this.ensureValidToken();
-        if (!hasValidToken) {
-            console.error(`❌ Cannot search without valid authentication`);
-            return [];
-        }
+    async fetchPosts(query = 'technology', limit = 100) {
+        if (!this.accessToken) return [];
 
         try {
-            console.log(`🔍 Searching "${query}" (authenticated request)...`);
-            
-            const headers = {
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${this.accessToken}`,
-                'User-Agent': 'WorldMoodTracker/1.0'
-            };
+            const response = await fetch(
+                `https://bsky.social/xrpc/app.bsky.feed.searchPosts?q=${query}&limit=${limit}`,
+                { headers: { 'Authorization': `Bearer ${this.accessToken}` } }
+            );
 
-            // Only use authenticated endpoint - public endpoints are broken
-            const url = `https://bsky.social/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(query)}&limit=${limit}`;
-            
-            const response = await fetch(url, { 
-                headers,
-                timeout: 15000 // 15 second timeout
-            });
-
-            const responseText = await response.text();
-            
-            if (!response.ok) {
-                if (response.status === 401) {
-                    console.log('🔄 Token expired during request, refreshing and retrying...');
-                    const refreshed = await this.refreshAccessToken();
-                    if (refreshed) {
-                        // Retry the request with new token
-                        return await this.searchPosts(query, limit);
-                    }
-                }
-                
-                console.log(`⚠️  Search failed: ${response.status} ${response.statusText}`);
-                console.log('Response preview:', responseText.substring(0, 200));
-                return [];
+            if (response.ok) {
+                const data = await response.json();
+                return data.posts || [];
             }
-
-            // Check if response is actually JSON
-            if (responseText.trim().startsWith('<')) {
-                console.log(`⚠️  Received HTML instead of JSON for query "${query}"`);
-                return [];
-            }
-
-            const data = JSON.parse(responseText);
-            const posts = data.posts || [];
-            console.log(`✅ Found ${posts.length} posts for "${query}"`);
-            return posts;
-
         } catch (error) {
-            if (error.name === 'AbortError' || error.message.includes('timeout')) {
-                console.log(`⏰ Request timeout for query "${query}"`);
-            } else {
-                console.log(`❌ Search error for "${query}":`, error.message);
-            }
-            return [];
+            console.error('Fetch failed:', error.message);
         }
+        return [];
+    }
+
+    processWords(posts) {
+        const wordCounts = new Map();
+
+        posts.forEach(post => {
+            const text = post.record?.text || '';
+            const words = text.toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .split(/\s+/)
+                .filter(word => word.length > 2 && !this.stopWords.has(word));
+
+            words.forEach(word => {
+                wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
+            });
+        });
+
+        return Array.from(wordCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 100);
+    }
+
+    async run() {
+        console.log('Starting word fetch...');
+        
+        const authenticated = await this.authenticate();
+        if (!authenticated) {
+            console.log('Using sample data...');
+            await this.saveSampleData();
+            return;
+        }
+
+        const queries = ['tech', 'ai', 'coding', 'javascript', 'web'];
+        const allPosts = [];
+
+        for (const query of queries) {
+            const posts = await this.fetchPosts(query, 50);
+            allPosts.push(...posts);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limit
+        }
+
+        const topWords = this.processWords(allPosts);
+        
+        await fs.writeFile('word-data.json', JSON.stringify({
+            words: topWords,
+            timestamp: new Date().toISOString(),
+            postCount: allPosts.length
+        }, null, 2));
+
+        console.log(`Saved ${topWords.length} words from ${allPosts.length} posts`);
+    }
+
+    async saveSampleData() {
+        const sampleWords = [
+            ['technology', 45], ['coding', 42], ['javascript', 38], ['future', 35],
+            ['innovation', 32], ['community', 30], ['learning', 28], ['development', 27],
+            ['programming', 26], ['design', 24], ['artificial', 23], ['intelligence', 22],
+            ['climate', 21], ['change', 20], ['creative', 19], ['building', 18],
+            ['opensource', 17], ['collaboration', 16], ['security', 15], ['performance', 14]
+        ];
+
+        await fs.writeFile('word-data.json', JSON.stringify({
+            words: sampleWords,
+            timestamp: new Date().toISOString(),
+            postCount: 0
+        }, null, 2));
     }
 }
+
+// Run
+new BlueskyWordFetcher().run();
