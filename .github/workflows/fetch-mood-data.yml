@@ -1,53 +1,39 @@
-name: Fetch World Mood Data
+name: Fetch Word Data
 
 on:
   schedule:
-    # Run every hour at minute 30
     - cron: '30 * * * *'
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
   push:
-    branches: [ main ] # Run on push to test
+    branches: [ main ]
 
 permissions:
-  contents: write  # This gives the action permission to write to the repository
+  contents: write
 
 jobs:
-  fetch-mood:
+  fetch-words:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/checkout@v3
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
+    - uses: actions/setup-node@v3
       with:
         node-version: '18'
     
-    - name: Install dependencies
-      run: |
-        npm init -y
-        npm install node-fetch@2
+    - run: npm install node-fetch@2
     
-    - name: Fetch mood data
-      env:
-        BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
-        BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
-      run: node fetch-mood-data.js
+    - run: node fetch-words.js
     
-    - name: Commit and push if changed
+    - name: Commit changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-        # Check if mood-data.json has actually changed
-        if git diff --quiet HEAD -- mood-data.json; then
-          echo "No changes to mood-data.json"
+        if git diff --quiet HEAD -- word-data.json; then
+          echo "No changes"
         else
-          echo "Changes detected in mood-data.json, committing..."
-          git add mood-data.json
-          git commit -m "Update mood data [skip ci]"
+          git add word-data.json
+          git commit -m "Update word data [skip ci]"
           git push
         fi
