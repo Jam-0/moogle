@@ -1,0 +1,42 @@
+name: Fetch World Mood Data
+
+on:
+  schedule:
+    # Run every hour at minute 30
+    - cron: '30 * * * *'
+  workflow_dispatch: # Allow manual trigger
+  push:
+    branches: [ main ] # Run on push to test
+
+jobs:
+  fetch-mood:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        npm init -y
+        npm install node-fetch@2
+    
+    - name: Fetch mood data
+      env:
+        BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+        BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
+      run: node fetch-mood-data.js
+    
+    - name: Commit and push if changed
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add mood-data.json
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update mood data [skip ci]" && git push)
