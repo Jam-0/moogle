@@ -245,15 +245,14 @@
             margin-top: 0.5rem;
         }
 
-        /* Loading State */
-        .loading {
-            display: none;
-            font-size: 1.2rem;
-            color: rgba(255, 255, 255, 0.8);
+        /* Loading animation for mood description */
+        body[data-loading="true"] .mood-description {
+            animation: loadingPulse 1.5s ease-in-out infinite;
         }
 
-        .loading.active {
-            display: block;
+        @keyframes loadingPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
         }
 
         /* Responsive Design */
@@ -318,7 +317,7 @@
         }
     </style>
 </head>
-<body class="mood-neutral">
+<body class="mood-neutral" data-loading="true">
     <div class="pulse-overlay"></div>
     
     <header>
@@ -340,7 +339,7 @@
         <div class="mood-statement">
             <p class="mood-text">
                 The mood of <span class="mood-region">the World</span> today is 
-                <span class="mood-description">loading...</span>
+                <span class="mood-description">analyzing emotions...</span>
             </p>
             <div class="momentum">
                 <span class="momentum-icon">→</span>
@@ -355,8 +354,6 @@
             <button class="time-option" data-time="evening">Evening</button>
             <button class="time-option" data-time="night">Night</button>
         </div>
-
-        <div class="loading">Analyzing emotions...</div>
     </main>
 
     <button class="comparison-toggle">Compare Regions</button>
@@ -373,19 +370,33 @@
                 this.currentRegion = 'world';
                 this.currentTime = 'day';
                 this.comparisonMode = false;
-                this.comparisonRegions = [];
                 this.moodCache = new Map();
-                this.initializeDB();
-                this.initializeEventListeners();
-                this.loadInitialData();
+                this.db = null;
+                this.initialize();
             }
 
-            // Initialize IndexedDB for caching
+            async initialize() {
+                try {
+                    await this.initializeDB();
+                    this.initializeEventListeners();
+                    await this.loadInitialData();
+                } catch (error) {
+                    console.error('Failed to initialize:', error);
+                    // Still try to show something
+                    document.body.removeAttribute('data-loading');
+                    document.querySelector('.mood-description').textContent = 'unable to load mood data';
+                }
+            }
+
             async initializeDB() {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     const request = indexedDB.open('WorldMoodDB', 1);
                     
-                    request.onerror = () => reject(request.error);
+                    request.onerror = () => {
+                        console.warn('IndexedDB not available');
+                        resolve();
+                    };
+                    
                     request.onsuccess = () => {
                         this.db = request.result;
                         resolve();
@@ -400,15 +411,12 @@
                 });
             }
 
-            // Initialize event listeners
             initializeEventListeners() {
-                // Region selector
                 document.getElementById('region-select').addEventListener('change', (e) => {
                     this.currentRegion = e.target.value;
                     this.fetchAndUpdateMood();
                 });
 
-                // Time selectors
                 document.querySelectorAll('.time-option').forEach(button => {
                     button.addEventListener('click', (e) => {
                         document.querySelectorAll('.time-option').forEach(b => b.classList.remove('active'));
@@ -418,156 +426,76 @@
                     });
                 });
 
-                // Comparison mode toggle
                 document.querySelector('.comparison-toggle').addEventListener('click', () => {
                     this.toggleComparisonMode();
                 });
             }
 
-            // Load initial data
             async loadInitialData() {
                 await this.fetchAndUpdateMood();
-                this.updateLastUpdatedTime();
+                await this.updateLastUpdatedTime();
             }
 
-            // Fetch mood data (with caching)
             async fetchMoodData(region, time = 'day') {
                 const cacheKey = `${region}-${time}-${new Date().toDateString()}`;
                 
-                // Check cache first
+                // Check memory cache
                 if (this.moodCache.has(cacheKey)) {
                     return this.moodCache.get(cacheKey);
                 }
 
-                // Check IndexedDB
                 try {
-                    const cached = await this.getFromDB(cacheKey);
-                    if (cached && cached.timestamp > Date.now() - 3600000) { // 1 hour cache
-                        this.moodCache.set(cacheKey, cached.data);
-                        return cached.data;
+                    // Try to load from mood-data.json
+                    const response = await fetch('mood-data.json');
+                    if (response.ok) {
+                        const moodData = await response.json();
+                        if (moodData[region]) {
+                            const regionData = moodData[region];
+                            const data = {
+                                region: this.formatRegionName(region),
+                                date: regionData.date,
+                                time: time,
+                                dominant_emotions: regionData.dominant_emotions,
+                                sentiment_score: regionData.sentiment_score,
+                                weather_metaphor: regionData.weather_metaphor,
+                                momentum: regionData.momentum,
+                                momentum_icon: regionData.momentum_icon,
+                                comparison_yesterday: regionData.sentiment_score * 0.1
+                            };
+                            
+                            this.moodCache.set(cacheKey, data);
+                            return data;
+                        }
                     }
                 } catch (error) {
-                    console.error('DB read error:', error);
+                    console.log('Using fallback data');
                 }
 
-                // Show loading state
-                this.showLoading(true);
-
-                // Simulate API call (replace with actual Bluesky API integration)
-                try {
-                    const data = await this.mockFetchMoodAPI(region, time);
-                    
-                    // Cache the data
-                    this.moodCache.set(cacheKey, data);
-                    await this.saveToDB(cacheKey, data);
-                    
-                    return data;
-                } catch (error) {
-                    console.error('Fetch error:', error);
-                    return this.getFallbackData(region);
-                } finally {
-                    this.showLoading(false);
-                }
+                // Fallback data
+                return this.getFallbackData(region);
             }
 
-            // Mock API call (to be replaced with actual Bluesky integration)
-            async mockFetchMoodAPI(region, time) {
-                // Simulate network delay
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Generate mock data based on region and time
-                const moods = {
-                    'world': {
-                        'day': {
-                            dominant_emotions: ['contemplative', 'hopeful'],
-                            sentiment_score: 0.62,
-                            weather_metaphor: 'partly cloudy with rays of sunshine',
-                            momentum: 'brightening',
-                            comparison_yesterday: 0.15
-                        },
-                        'morning': {
-                            dominant_emotions: ['energetic', 'optimistic'],
-                            sentiment_score: 0.75,
-                            weather_metaphor: 'bright sunrise with morning dew',
-                            momentum: 'brightening',
-                            comparison_yesterday: 0.20
-                        }
-                    },
-                    'usa': {
-                        'day': {
-                            dominant_emotions: ['anxious', 'determined'],
-                            sentiment_score: 0.45,
-                            weather_metaphor: 'variable clouds with occasional thunder',
-                            momentum: 'darkening',
-                            comparison_yesterday: -0.12
-                        }
-                    },
-                    'europe': {
-                        'day': {
-                            dominant_emotions: ['calm', 'thoughtful'],
-                            sentiment_score: 0.68,
-                            weather_metaphor: 'mild with gentle breeze',
-                            momentum: 'steady',
-                            comparison_yesterday: 0.02
-                        }
-                    },
-                    'asia': {
-                        'day': {
-                            dominant_emotions: ['busy', 'hopeful'],
-                            sentiment_score: 0.70,
-                            weather_metaphor: 'clear skies with bustling energy',
-                            momentum: 'brightening',
-                            comparison_yesterday: 0.08
-                        }
-                    }
-                };
-
-                const defaultMood = {
-                    dominant_emotions: ['neutral', 'steady'],
-                    sentiment_score: 0.50,
-                    weather_metaphor: 'overcast but stable',
-                    momentum: 'steady',
-                    comparison_yesterday: 0
-                };
-
-                return {
-                    region: this.formatRegionName(region),
-                    date: new Date().toISOString().split('T')[0],
-                    time: time,
-                    ...(moods[region]?.[time] || moods[region]?.['day'] || defaultMood)
-                };
-            }
-
-            // Fetch and update mood display
             async fetchAndUpdateMood() {
                 const data = await this.fetchMoodData(this.currentRegion, this.currentTime);
                 this.updateMoodDisplay(data);
             }
 
-            // Update mood display
             updateMoodDisplay(data) {
-                // Update text content
                 document.querySelector('.mood-region').textContent = data.region;
                 document.querySelector('.mood-description').textContent = data.weather_metaphor;
                 
-                // Update momentum
                 const momentumIcon = document.querySelector('.momentum-icon');
                 const momentumText = document.querySelector('.momentum-text');
                 
-                if (data.comparison_yesterday > 0.1) {
-                    momentumIcon.textContent = '↗️';
-                    momentumText.textContent = 'and brightening';
-                } else if (data.comparison_yesterday < -0.1) {
-                    momentumIcon.textContent = '↘️';
-                    momentumText.textContent = 'and darkening';
-                } else {
-                    momentumIcon.textContent = '→';
-                    momentumText.textContent = 'and steady';
+                if (data.momentum_icon) {
+                    momentumIcon.textContent = data.momentum_icon;
+                    momentumText.textContent = data.momentum;
                 }
 
                 // Update body class for mood styling
                 const primaryEmotion = data.dominant_emotions[0];
                 document.body.className = '';
+                document.body.removeAttribute('data-loading');
                 
                 if (['joy', 'happy', 'optimistic', 'energetic', 'hopeful'].some(e => primaryEmotion.includes(e))) {
                     document.body.classList.add('mood-joy');
@@ -575,34 +503,29 @@
                     document.body.classList.add('mood-sad');
                 } else if (['angry', 'frustrated', 'agitated'].some(e => primaryEmotion.includes(e))) {
                     document.body.classList.add('mood-angry');
-                } else if (['calm', 'peaceful', 'serene', 'thoughtful'].some(e => primaryEmotion.includes(e))) {
+                } else if (['calm', 'peaceful', 'serene', 'reflective', 'contemplative', 'practical'].some(e => primaryEmotion.includes(e))) {
                     document.body.classList.add('mood-calm');
-                } else if (['anxious', 'worried', 'nervous', 'fear'].some(e => primaryEmotion.includes(e))) {
+                } else if (['anxious', 'worried', 'nervous'].some(e => primaryEmotion.includes(e))) {
                     document.body.classList.add('mood-anxious');
                 } else {
                     document.body.classList.add('mood-neutral');
                 }
             }
 
-            // Toggle comparison mode
             async toggleComparisonMode() {
                 this.comparisonMode = !this.comparisonMode;
                 
                 if (this.comparisonMode) {
-                    // Create comparison UI
                     this.createComparisonUI();
                 } else {
-                    // Remove comparison UI
                     this.removeComparisonUI();
                     this.fetchAndUpdateMood();
                 }
             }
 
-            // Create comparison UI
             createComparisonUI() {
                 const moodStatement = document.querySelector('.mood-statement');
                 
-                // Create comparison selectors
                 const comparisonHTML = `
                     <div class="comparison-container" style="margin-top: 2rem;">
                         <p style="color: rgba(255,255,255,0.8); margin-bottom: 1rem;">Compare moods between regions:</p>
@@ -612,6 +535,8 @@
                                 <option value="canada">Canada</option>
                                 <option value="europe">Europe</option>
                                 <option value="asia">Asia</option>
+                                <option value="australia-nz">Australia/NZ</option>
+                                <option value="south-america">South America</option>
                             </select>
                             <span style="color: rgba(255,255,255,0.8);">vs</span>
                             <select id="compare-region-2" class="region-selector" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); padding: 0.5rem 1rem; border-radius: 2rem;">
@@ -619,6 +544,8 @@
                                 <option value="asia">Asia</option>
                                 <option value="usa">USA</option>
                                 <option value="canada">Canada</option>
+                                <option value="australia-nz">Australia/NZ</option>
+                                <option value="south-america">South America</option>
                             </select>
                         </div>
                         <div id="comparison-result" style="margin-top: 2rem; font-size: 1.5rem; color: rgba(255,255,255,0.9);"></div>
@@ -627,14 +554,12 @@
                 
                 moodStatement.insertAdjacentHTML('afterend', comparisonHTML);
                 
-                // Add event listeners
                 document.getElementById('compare-region-1').addEventListener('change', () => this.updateComparison());
                 document.getElementById('compare-region-2').addEventListener('change', () => this.updateComparison());
                 
                 this.updateComparison();
             }
 
-            // Update comparison
             async updateComparison() {
                 const region1 = document.getElementById('compare-region-1').value;
                 const region2 = document.getElementById('compare-region-2').value;
@@ -651,15 +576,14 @@
                 if (Math.abs(diff) < 0.1) {
                     comparisonText = `Both ${data1.region} and ${data2.region} share a similar ${data1.dominant_emotions[0]} mood today`;
                 } else if (diff > 0) {
-                    comparisonText = `Today, ${data1.region} feels more ${data1.dominant_emotions[0]} than ${data2.region}, which is notably ${data2.dominant_emotions[0]}`;
+                    comparisonText = `Today, ${data1.region} feels more ${data1.dominant_emotions[0]} (${data1.weather_metaphor}) than ${data2.region}, which is ${data2.dominant_emotions[0]} (${data2.weather_metaphor})`;
                 } else {
-                    comparisonText = `Today, ${data2.region} feels more ${data2.dominant_emotions[0]} than ${data1.region}, which is notably ${data1.dominant_emotions[0]}`;
+                    comparisonText = `Today, ${data2.region} feels more ${data2.dominant_emotions[0]} (${data2.weather_metaphor}) than ${data1.region}, which is ${data1.dominant_emotions[0]} (${data1.weather_metaphor})`;
                 }
                 
                 comparisonResult.textContent = comparisonText;
             }
 
-            // Remove comparison UI
             removeComparisonUI() {
                 const comparisonContainer = document.querySelector('.comparison-container');
                 if (comparisonContainer) {
@@ -667,7 +591,6 @@
                 }
             }
 
-            // Helper functions
             formatRegionName(region) {
                 const names = {
                     'world': 'the World',
@@ -681,19 +604,26 @@
                 return names[region] || region;
             }
 
-            showLoading(show) {
-                const loading = document.querySelector('.loading');
-                loading.classList.toggle('active', show);
-            }
-
-            updateLastUpdatedTime() {
-                const now = new Date();
-                const yesterday = new Date(now);
-                yesterday.setDate(yesterday.getDate() - 1);
-                yesterday.setHours(23, 59, 0, 0);
+            async updateLastUpdatedTime() {
+                try {
+                    const response = await fetch('mood-data.json');
+                    if (response.ok) {
+                        const moodData = await response.json();
+                        const worldData = moodData.world || moodData[Object.keys(moodData)[0]];
+                        if (worldData && worldData.last_updated) {
+                            const lastUpdated = new Date(worldData.last_updated);
+                            document.getElementById('update-time').textContent = 
+                                lastUpdated.toLocaleDateString() + ' at ' + 
+                                lastUpdated.toLocaleTimeString();
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.log('Could not load last updated time');
+                }
                 
-                document.getElementById('update-time').textContent = 
-                    yesterday.toLocaleDateString() + ' at 11:59 PM';
+                const now = new Date();
+                document.getElementById('update-time').textContent = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString();
             }
 
             getFallbackData(region) {
@@ -703,53 +633,18 @@
                     dominant_emotions: ['steady', 'neutral'],
                     sentiment_score: 0.5,
                     weather_metaphor: 'conditions unclear, awaiting data',
-                    momentum: 'steady',
+                    momentum: 'and steady',
+                    momentum_icon: '→',
                     comparison_yesterday: 0
                 };
-            }
-
-            // IndexedDB helpers
-            async saveToDB(key, data) {
-                return new Promise((resolve, reject) => {
-                    const transaction = this.db.transaction(['moods'], 'readwrite');
-                    const store = transaction.objectStore('moods');
-                    const request = store.put({
-                        id: key,
-                        data: data,
-                        timestamp: Date.now()
-                    });
-                    request.onsuccess = () => resolve();
-                    request.onerror = () => reject(request.error);
-                });
-            }
-
-            async getFromDB(key) {
-                return new Promise((resolve, reject) => {
-                    const transaction = this.db.transaction(['moods'], 'readonly');
-                    const store = transaction.objectStore('moods');
-                    const request = store.get(key);
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
             }
         }
 
         // Initialize the app
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('Initializing World Mood Tracker...');
             window.moodTracker = new WorldMoodTracker();
         });
-    </script>
-
-    <!-- Load the emotion analysis components -->
-    <script src="emotion-analyzer.js"></script>
-    <script src="weather-metaphor-generator.js"></script>
-    <script src="bluesky-api-integration.js"></script>
-
-    <!-- Initialize with mock data for now -->
-    <script>
-        // For now, we'll use mock data since we need backend processing
-        // The full integration would use the complete-integration.js with a backend
-        console.log('World Mood Tracker loaded - showing demo data');
     </script>
 </body>
 </html>
