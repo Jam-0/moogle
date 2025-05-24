@@ -3,648 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>World Mood Tracker</title>
+    <title>Bluesky Word Cloud</title>
     <style>
-        /* CSS Variables for Mood Colors */
-        :root {
-            --gradient-joy: linear-gradient(135deg, #FFD93D 0%, #FFB84D 50%, #F39C12 100%);
-            --gradient-sad: linear-gradient(135deg, #5C7CFA 0%, #748FFC 50%, #91A7FF 100%);
-            --gradient-angry: linear-gradient(135deg, #FF6B6B 0%, #FA5252 50%, #E03131 100%);
-            --gradient-calm: linear-gradient(135deg, #51CF66 0%, #69DB7C 50%, #8CE99A 100%);
-            --gradient-neutral: linear-gradient(135deg, #ADB5BD 0%, #868E96 50%, #495057 100%);
-            --gradient-anxious: linear-gradient(135deg, #845EF7 0%, #9775FA 50%, #B197FC 100%);
-            
-            --pulse-duration: 3s;
-            --transition-duration: 1.5s;
-        }
-
-        /* Reset and Base Styles */
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
             display: flex;
             flex-direction: column;
-            background: var(--gradient-neutral);
-            transition: background var(--transition-duration) ease;
-            overflow-x: hidden;
+            min-height: 100vh;
         }
 
-        /* Mood-based Background Classes */
-        body.mood-joy { background: var(--gradient-joy); }
-        body.mood-sad { background: var(--gradient-sad); }
-        body.mood-angry { background: var(--gradient-angry); }
-        body.mood-calm { background: var(--gradient-calm); }
-        body.mood-anxious { background: var(--gradient-anxious); }
-
-        /* Pulse Animation Overlay */
-        .pulse-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);
-            opacity: 0;
-            animation: pulse var(--pulse-duration) ease-in-out infinite;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* Different Pulse Speeds for Different Emotions */
-        body.mood-joy .pulse-overlay { --pulse-duration: 1.5s; }
-        body.mood-sad .pulse-overlay { --pulse-duration: 4s; }
-        body.mood-angry .pulse-overlay { --pulse-duration: 1s; }
-        body.mood-calm .pulse-overlay { --pulse-duration: 3s; }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0; transform: scale(0.8); }
-            50% { opacity: 0.3; transform: scale(1.2); }
-        }
-
-        /* Header */
         header {
-            position: relative;
-            z-index: 10;
-            padding: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .logo {
-            font-size: 1.2rem;
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
             font-weight: 300;
-            color: rgba(255, 255, 255, 0.9);
             letter-spacing: 0.1em;
         }
 
-        /* Region Selector */
-        .region-selector {
-            position: relative;
-        }
-
-        .region-selector select {
-            appearance: none;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.9);
-            padding: 0.5rem 2rem 0.5rem 1rem;
-            border-radius: 2rem;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .region-selector select:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .region-selector::after {
-            content: '▼';
-            position: absolute;
-            right: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: rgba(255, 255, 255, 0.7);
-            pointer-events: none;
-            font-size: 0.7rem;
-        }
-
-        /* Main Content */
-        main {
+        #cloud-container {
             flex: 1;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
             padding: 2rem;
             position: relative;
-            z-index: 2;
+            overflow: hidden;
         }
 
-        /* Mood Statement */
-        .mood-statement {
-            text-align: center;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .mood-text {
-            font-size: clamp(2rem, 8vw, 5rem);
-            font-weight: 300;
-            line-height: 1.2;
-            color: rgba(255, 255, 255, 0.95);
-            margin-bottom: 1rem;
-            transition: all var(--transition-duration) ease;
-        }
-
-        /* Variable Font Weight Based on Mood */
-        body.mood-joy .mood-text { font-weight: 400; }
-        body.mood-sad .mood-text { font-weight: 200; }
-        body.mood-angry .mood-text { font-weight: 600; }
-        body.mood-calm .mood-text { font-weight: 300; }
-
-        .mood-region {
-            font-weight: 400;
-            text-decoration: underline;
-            text-decoration-color: rgba(255, 255, 255, 0.3);
-            text-decoration-thickness: 1px;
-            text-underline-offset: 0.2em;
-        }
-
-        /* Momentum Indicator */
-        .momentum {
-            font-size: 1.5rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin-top: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .momentum-icon {
-            font-size: 2rem;
-            animation: float 2s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-
-        /* Time Selector */
-        .time-selector {
-            margin-top: 3rem;
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .time-option {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.9);
-            padding: 0.5rem 1.5rem;
-            border-radius: 2rem;
-            cursor: pointer;
+        .word {
+            position: absolute;
             transition: all 0.3s ease;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .word:hover {
+            transform: scale(1.2);
+            z-index: 100;
+        }
+
+        .loading {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        #controls {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 0.9rem;
         }
 
-        .time-option:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .time-option.active {
-            background: rgba(255, 255, 255, 0.4);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        /* Comparison Mode */
-        .comparison-toggle {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
+        button:hover {
             background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.9);
-            padding: 0.75rem 1.5rem;
-            border-radius: 2rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            z-index: 10;
         }
 
-        .comparison-toggle:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        /* Footer */
         footer {
-            position: relative;
-            z-index: 10;
             padding: 1rem;
             text-align: center;
-            color: rgba(255, 255, 255, 0.6);
             font-size: 0.8rem;
-        }
-
-        .last-updated {
-            margin-top: 0.5rem;
-        }
-
-        /* Loading animation for mood description */
-        body[data-loading="true"] .mood-description {
-            animation: loadingPulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes loadingPulse {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 1; }
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            header {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .mood-text {
-                font-size: clamp(1.5rem, 6vw, 3rem);
-            }
-
-            .time-selector {
-                gap: 0.5rem;
-            }
-
-            .time-option {
-                padding: 0.4rem 1rem;
-                font-size: 0.8rem;
-            }
-
-            .comparison-toggle {
-                bottom: 1rem;
-                right: 1rem;
-                padding: 0.5rem 1rem;
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Accessibility */
-        @media (prefers-reduced-motion: reduce) {
-            .pulse-overlay,
-            .momentum-icon {
-                animation: none;
-            }
-
-            body,
-            .mood-text {
-                transition: none;
-            }
-        }
-
-        /* High Contrast Mode */
-        @media (prefers-contrast: high) {
-            body {
-                background: #000;
-            }
-
-            .mood-text,
-            .momentum {
-                color: #fff;
-            }
-
-            header,
-            .region-selector select,
-            .time-option,
-            .comparison-toggle {
-                background: #222;
-                border-color: #fff;
-            }
+            color: rgba(255, 255, 255, 0.5);
         }
     </style>
 </head>
-<body class="mood-neutral" data-loading="true">
-    <div class="pulse-overlay"></div>
-    
+<body>
     <header>
-        <h1 class="logo">WORLD MOOD</h1>
-        <div class="region-selector">
-            <select id="region-select" aria-label="Select region">
-                <option value="world">World</option>
-                <option value="usa">USA</option>
-                <option value="canada">Canada</option>
-                <option value="australia-nz">Australia/NZ</option>
-                <option value="europe">Europe</option>
-                <option value="asia">Asia</option>
-                <option value="south-america">South America</option>
-            </select>
-        </div>
+        <h1>BLUESKY WORD CLOUD</h1>
     </header>
 
-    <main>
-        <div class="mood-statement">
-            <p class="mood-text">
-                The mood of <span class="mood-region">the World</span> today is 
-                <span class="mood-description">analyzing emotions...</span>
-            </p>
-            <div class="momentum">
-                <span class="momentum-icon">→</span>
-                <span class="momentum-text">and steady</span>
-            </div>
-        </div>
+    <div id="controls">
+        <button onclick="wordCloud.refresh()">Refresh</button>
+    </div>
 
-        <div class="time-selector">
-            <button class="time-option active" data-time="day">Today</button>
-            <button class="time-option" data-time="morning">Morning</button>
-            <button class="time-option" data-time="afternoon">Afternoon</button>
-            <button class="time-option" data-time="evening">Evening</button>
-            <button class="time-option" data-time="night">Night</button>
-        </div>
-    </main>
-
-    <button class="comparison-toggle">Compare Regions</button>
+    <div id="cloud-container">
+        <div class="loading">Loading words from Bluesky...</div>
+    </div>
 
     <footer>
-        <p>&copy; 2024 World Mood Tracker</p>
-        <p class="last-updated">Last updated: <span id="update-time">--</span></p>
+        <p>Last updated: <span id="last-updated">--</span></p>
     </footer>
 
     <script>
-        // World Mood Tracker - Main JavaScript
-        class WorldMoodTracker {
+        class WordCloud {
             constructor() {
-                this.currentRegion = 'world';
-                this.currentTime = 'day';
-                this.comparisonMode = false;
-                this.moodCache = new Map();
-                this.db = null;
-                this.initialize();
+                this.container = document.getElementById('cloud-container');
+                this.stopWords = new Set([
+                    'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have',
+                    'i', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you',
+                    'do', 'at', 'this', 'but', 'his', 'by', 'from', 'they',
+                    'we', 'say', 'her', 'she', 'or', 'an', 'will', 'my', 'one',
+                    'all', 'would', 'there', 'their', 'what', 'so', 'up', 'out',
+                    'if', 'about', 'who', 'get', 'which', 'go', 'me', 'when',
+                    'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know',
+                    'take', 'people', 'into', 'year', 'your', 'good', 'some',
+                    'could', 'them', 'see', 'other', 'than', 'then', 'now',
+                    'look', 'only', 'come', 'its', 'over', 'think', 'also',
+                    'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first',
+                    'well', 'way', 'even', 'new', 'want', 'because', 'any',
+                    'these', 'give', 'day', 'most', 'us', 'is', 'was', 'are',
+                    'been', 'has', 'had', 'were', 'said', 'did', 'am', 'im',
+                    'dont', 'cant', 'wont', 'thats', 'heres', 'https', 'com'
+                ]);
+                this.words = new Map();
+                this.init();
             }
 
-            async initialize() {
+            async init() {
+                await this.fetchWords();
+                setInterval(() => this.fetchWords(), 60000); // Refresh every minute
+            }
+
+            async fetchWords() {
                 try {
-                    await this.initializeDB();
-                    this.initializeEventListeners();
-                    await this.loadInitialData();
+                    // Try to load from mood-data.json first (your existing data)
+                    const response = await fetch('mood-data.json');
+                    if (response.ok) {
+                        const data = await response.json();
+                        // For now, use sample data since we don't have actual post text
+                        this.processSampleData();
+                    } else {
+                        this.processSampleData();
+                    }
                 } catch (error) {
-                    console.error('Failed to initialize:', error);
-                    // Still try to show something
-                    document.body.removeAttribute('data-loading');
-                    document.querySelector('.mood-description').textContent = 'unable to load mood data';
+                    console.error('Error fetching data:', error);
+                    this.processSampleData();
                 }
             }
 
-            async initializeDB() {
-                return new Promise((resolve) => {
-                    const request = indexedDB.open('WorldMoodDB', 1);
-                    
-                    request.onerror = () => {
-                        console.warn('IndexedDB not available');
-                        resolve();
-                    };
-                    
-                    request.onsuccess = () => {
-                        this.db = request.result;
-                        resolve();
-                    };
-                    
-                    request.onupgradeneeded = (event) => {
-                        const db = event.target.result;
-                        if (!db.objectStoreNames.contains('moods')) {
-                            db.createObjectStore('moods', { keyPath: 'id' });
-                        }
-                    };
-                });
-            }
+            processSampleData() {
+                // Sample data simulating Bluesky posts
+                const samplePosts = [
+                    "Just launched my new project! Excited to share with the community #coding #javascript",
+                    "Beautiful sunrise this morning. Nature never fails to inspire creativity",
+                    "Working on some cool AI experiments. Machine learning is fascinating!",
+                    "Coffee and code - the perfect combination for a productive day",
+                    "Love the energy in the tech community today. So many innovative ideas!",
+                    "Debugging is like detective work. Finally found that elusive bug!",
+                    "Reading about quantum computing. The future is mind-blowing",
+                    "Open source collaboration at its finest. Together we build amazing things",
+                    "Design thinking workshop was incredible. New perspectives unlocked",
+                    "Climate change requires urgent action. Technology can be part of the solution",
+                    "Music and programming go hand in hand. What's your coding playlist?",
+                    "Blockchain technology continues to evolve. Interesting developments ahead",
+                    "Mental health matters. Take breaks, stay hydrated, keep coding",
+                    "The intersection of art and technology creates magic",
+                    "Security first! Always thinking about protecting user data",
+                    "Remote work has changed everything. Loving the flexibility",
+                    "Learning never stops. Picked up Rust this week - impressive language!",
+                    "Community support makes all the difference. Thank you everyone!",
+                    "Performance optimization is an art form. Every millisecond counts",
+                    "Ethical AI development should be our priority moving forward"
+                ];
 
-            initializeEventListeners() {
-                document.getElementById('region-select').addEventListener('change', (e) => {
-                    this.currentRegion = e.target.value;
-                    this.fetchAndUpdateMood();
-                });
+                // Clear existing words
+                this.words.clear();
 
-                document.querySelectorAll('.time-option').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        document.querySelectorAll('.time-option').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                        this.currentTime = e.target.dataset.time;
-                        this.fetchAndUpdateMood();
+                // Process each post
+                samplePosts.forEach(post => {
+                    const words = post.toLowerCase()
+                        .replace(/[^a-z0-9\s]/g, '')
+                        .split(/\s+/)
+                        .filter(word => word.length > 2 && !this.stopWords.has(word));
+
+                    words.forEach(word => {
+                        this.words.set(word, (this.words.get(word) || 0) + 1);
                     });
                 });
 
-                document.querySelector('.comparison-toggle').addEventListener('click', () => {
-                    this.toggleComparisonMode();
+                this.renderCloud();
+                this.updateTimestamp();
+            }
+
+            renderCloud() {
+                this.container.innerHTML = '';
+
+                // Convert to array and sort by frequency
+                const wordArray = Array.from(this.words.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 50); // Top 50 words
+
+                if (wordArray.length === 0) {
+                    this.container.innerHTML = '<div class="loading">No words found</div>';
+                    return;
+                }
+
+                // Calculate sizes
+                const maxCount = wordArray[0][1];
+                const minCount = wordArray[wordArray.length - 1][1];
+
+                // Create word elements
+                wordArray.forEach(([word, count], index) => {
+                    const wordEl = document.createElement('div');
+                    wordEl.className = 'word';
+                    wordEl.textContent = word;
+
+                    // Calculate font size (12px to 72px)
+                    const fontSize = Math.floor(12 + (count - minCount) / (maxCount - minCount) * 60);
+                    wordEl.style.fontSize = `${fontSize}px`;
+
+                    // Random color from a palette
+                    const colors = ['#00d4ff', '#ff006e', '#8338ec', '#06ffa5', '#ffbe0b', '#fb5607'];
+                    wordEl.style.color = colors[Math.floor(Math.random() * colors.length)];
+
+                    // Random opacity based on frequency
+                    wordEl.style.opacity = 0.5 + (count / maxCount) * 0.5;
+
+                    // Position randomly in a circular pattern
+                    const angle = (index / wordArray.length) * 2 * Math.PI;
+                    const radius = Math.random() * 200 + 100;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius * 0.6; // Elliptical
+
+                    wordEl.style.transform = `translate(${x}px, ${y}px)`;
+
+                    // Add hover effect data
+                    wordEl.title = `${word}: ${count} mentions`;
+
+                    this.container.appendChild(wordEl);
+                });
+
+                // Center the cloud
+                const containerRect = this.container.getBoundingClientRect();
+                const centerX = containerRect.width / 2;
+                const centerY = containerRect.height / 2;
+
+                this.container.querySelectorAll('.word').forEach(wordEl => {
+                    const currentTransform = wordEl.style.transform;
+                    const matches = currentTransform.match(/translate\((-?\d+\.?\d*)px,\s*(-?\d+\.?\d*)px\)/);
+                    if (matches) {
+                        const x = parseFloat(matches[1]) + centerX - wordEl.offsetWidth / 2;
+                        const y = parseFloat(matches[2]) + centerY - wordEl.offsetHeight / 2;
+                        wordEl.style.left = `${x}px`;
+                        wordEl.style.top = `${y}px`;
+                        wordEl.style.transform = 'none';
+                    }
                 });
             }
 
-            async loadInitialData() {
-                await this.fetchAndUpdateMood();
-                await this.updateLastUpdatedTime();
-            }
-
-            async fetchMoodData(region, time = 'day') {
-                const cacheKey = `${region}-${time}-${new Date().toDateString()}`;
-                
-                // Check memory cache
-                if (this.moodCache.has(cacheKey)) {
-                    return this.moodCache.get(cacheKey);
-                }
-
-                try {
-                    // Try to load from mood-data.json
-                    const response = await fetch('mood-data.json');
-                    if (response.ok) {
-                        const moodData = await response.json();
-                        if (moodData[region]) {
-                            const regionData = moodData[region];
-                            const data = {
-                                region: this.formatRegionName(region),
-                                date: regionData.date,
-                                time: time,
-                                dominant_emotions: regionData.dominant_emotions,
-                                sentiment_score: regionData.sentiment_score,
-                                weather_metaphor: regionData.weather_metaphor,
-                                momentum: regionData.momentum,
-                                momentum_icon: regionData.momentum_icon,
-                                comparison_yesterday: regionData.sentiment_score * 0.1
-                            };
-                            
-                            this.moodCache.set(cacheKey, data);
-                            return data;
-                        }
-                    }
-                } catch (error) {
-                    console.log('Using fallback data');
-                }
-
-                // Fallback data
-                return this.getFallbackData(region);
-            }
-
-            async fetchAndUpdateMood() {
-                const data = await this.fetchMoodData(this.currentRegion, this.currentTime);
-                this.updateMoodDisplay(data);
-            }
-
-            updateMoodDisplay(data) {
-                document.querySelector('.mood-region').textContent = data.region;
-                document.querySelector('.mood-description').textContent = data.weather_metaphor;
-                
-                const momentumIcon = document.querySelector('.momentum-icon');
-                const momentumText = document.querySelector('.momentum-text');
-                
-                if (data.momentum_icon) {
-                    momentumIcon.textContent = data.momentum_icon;
-                    momentumText.textContent = data.momentum;
-                }
-
-                // Update body class for mood styling
-                const primaryEmotion = data.dominant_emotions[0];
-                document.body.className = '';
-                document.body.removeAttribute('data-loading');
-                
-                if (['joy', 'happy', 'optimistic', 'energetic', 'hopeful'].some(e => primaryEmotion.includes(e))) {
-                    document.body.classList.add('mood-joy');
-                } else if (['sad', 'melancholic', 'gloomy'].some(e => primaryEmotion.includes(e))) {
-                    document.body.classList.add('mood-sad');
-                } else if (['angry', 'frustrated', 'agitated'].some(e => primaryEmotion.includes(e))) {
-                    document.body.classList.add('mood-angry');
-                } else if (['calm', 'peaceful', 'serene', 'reflective', 'contemplative', 'practical'].some(e => primaryEmotion.includes(e))) {
-                    document.body.classList.add('mood-calm');
-                } else if (['anxious', 'worried', 'nervous'].some(e => primaryEmotion.includes(e))) {
-                    document.body.classList.add('mood-anxious');
-                } else {
-                    document.body.classList.add('mood-neutral');
-                }
-            }
-
-            async toggleComparisonMode() {
-                this.comparisonMode = !this.comparisonMode;
-                
-                if (this.comparisonMode) {
-                    this.createComparisonUI();
-                } else {
-                    this.removeComparisonUI();
-                    this.fetchAndUpdateMood();
-                }
-            }
-
-            createComparisonUI() {
-                const moodStatement = document.querySelector('.mood-statement');
-                
-                const comparisonHTML = `
-                    <div class="comparison-container" style="margin-top: 2rem;">
-                        <p style="color: rgba(255,255,255,0.8); margin-bottom: 1rem;">Compare moods between regions:</p>
-                        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                            <select id="compare-region-1" class="region-selector" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); padding: 0.5rem 1rem; border-radius: 2rem;">
-                                <option value="usa">USA</option>
-                                <option value="canada">Canada</option>
-                                <option value="europe">Europe</option>
-                                <option value="asia">Asia</option>
-                                <option value="australia-nz">Australia/NZ</option>
-                                <option value="south-america">South America</option>
-                            </select>
-                            <span style="color: rgba(255,255,255,0.8);">vs</span>
-                            <select id="compare-region-2" class="region-selector" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); padding: 0.5rem 1rem; border-radius: 2rem;">
-                                <option value="europe">Europe</option>
-                                <option value="asia">Asia</option>
-                                <option value="usa">USA</option>
-                                <option value="canada">Canada</option>
-                                <option value="australia-nz">Australia/NZ</option>
-                                <option value="south-america">South America</option>
-                            </select>
-                        </div>
-                        <div id="comparison-result" style="margin-top: 2rem; font-size: 1.5rem; color: rgba(255,255,255,0.9);"></div>
-                    </div>
-                `;
-                
-                moodStatement.insertAdjacentHTML('afterend', comparisonHTML);
-                
-                document.getElementById('compare-region-1').addEventListener('change', () => this.updateComparison());
-                document.getElementById('compare-region-2').addEventListener('change', () => this.updateComparison());
-                
-                this.updateComparison();
-            }
-
-            async updateComparison() {
-                const region1 = document.getElementById('compare-region-1').value;
-                const region2 = document.getElementById('compare-region-2').value;
-                
-                const [data1, data2] = await Promise.all([
-                    this.fetchMoodData(region1, this.currentTime),
-                    this.fetchMoodData(region2, this.currentTime)
-                ]);
-                
-                const comparisonResult = document.getElementById('comparison-result');
-                const diff = data1.sentiment_score - data2.sentiment_score;
-                
-                let comparisonText = '';
-                if (Math.abs(diff) < 0.1) {
-                    comparisonText = `Both ${data1.region} and ${data2.region} share a similar ${data1.dominant_emotions[0]} mood today`;
-                } else if (diff > 0) {
-                    comparisonText = `Today, ${data1.region} feels more ${data1.dominant_emotions[0]} (${data1.weather_metaphor}) than ${data2.region}, which is ${data2.dominant_emotions[0]} (${data2.weather_metaphor})`;
-                } else {
-                    comparisonText = `Today, ${data2.region} feels more ${data2.dominant_emotions[0]} (${data2.weather_metaphor}) than ${data1.region}, which is ${data1.dominant_emotions[0]} (${data1.weather_metaphor})`;
-                }
-                
-                comparisonResult.textContent = comparisonText;
-            }
-
-            removeComparisonUI() {
-                const comparisonContainer = document.querySelector('.comparison-container');
-                if (comparisonContainer) {
-                    comparisonContainer.remove();
-                }
-            }
-
-            formatRegionName(region) {
-                const names = {
-                    'world': 'the World',
-                    'usa': 'USA',
-                    'canada': 'Canada',
-                    'australia-nz': 'Australia/NZ',
-                    'europe': 'Europe',
-                    'asia': 'Asia',
-                    'south-america': 'South America'
-                };
-                return names[region] || region;
-            }
-
-            async updateLastUpdatedTime() {
-                try {
-                    const response = await fetch('mood-data.json');
-                    if (response.ok) {
-                        const moodData = await response.json();
-                        const worldData = moodData.world || moodData[Object.keys(moodData)[0]];
-                        if (worldData && worldData.last_updated) {
-                            const lastUpdated = new Date(worldData.last_updated);
-                            document.getElementById('update-time').textContent = 
-                                lastUpdated.toLocaleDateString() + ' at ' + 
-                                lastUpdated.toLocaleTimeString();
-                            return;
-                        }
-                    }
-                } catch (error) {
-                    console.log('Could not load last updated time');
-                }
-                
+            updateTimestamp() {
                 const now = new Date();
-                document.getElementById('update-time').textContent = now.toLocaleDateString() + ' at ' + now.toLocaleTimeString();
+                document.getElementById('last-updated').textContent = 
+                    `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
             }
 
-            getFallbackData(region) {
-                return {
-                    region: this.formatRegionName(region),
-                    date: new Date().toISOString().split('T')[0],
-                    dominant_emotions: ['steady', 'neutral'],
-                    sentiment_score: 0.5,
-                    weather_metaphor: 'conditions unclear, awaiting data',
-                    momentum: 'and steady',
-                    momentum_icon: '→',
-                    comparison_yesterday: 0
-                };
+            refresh() {
+                this.container.innerHTML = '<div class="loading">Refreshing...</div>';
+                setTimeout(() => this.fetchWords(), 500);
             }
         }
 
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('Initializing World Mood Tracker...');
-            window.moodTracker = new WorldMoodTracker();
-        });
+        // Initialize
+        const wordCloud = new WordCloud();
     </script>
 </body>
 </html>
