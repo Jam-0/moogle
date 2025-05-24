@@ -739,5 +739,17 @@
             window.moodTracker = new WorldMoodTracker();
         });
     </script>
+
+    <!-- Load the emotion analysis components -->
+    <script src="emotion-analyzer.js"></script>
+    <script src="weather-metaphor-generator.js"></script>
+    <script src="bluesky-api-integration.js"></script>
+
+    <!-- Initialize with mock data for now -->
+    <script>
+        // For now, we'll use mock data since we need backend processing
+        // The full integration would use the complete-integration.js with a backend
+        console.log('World Mood Tracker loaded - showing demo data');
+    </script>
 </body>
 </html>
