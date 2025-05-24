@@ -1,0 +1,20 @@
+{
+  "name": "world-mood-tracker",
+  "version": "1.0.0",
+  "description": "World Mood Tracker - Analyzes global emotions from Bluesky",
+  "main": "fetch-mood-data.js",
+  "scripts": {
+    "fetch-data": "node fetch-mood-data.js",
+    "test": "node test-connection.js"
+  },
+  "keywords": [
+    "bluesky",
+    "sentiment-analysis",
+    "mood-tracker"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^2.6.12"
+  }
+}
