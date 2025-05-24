@@ -2,113 +2,113 @@
   "world": {
     "region": "world",
     "date": "2025-05-24",
-    "time": "09:51:34",
+    "time": "10:04:05",
     "dominant_emotions": [
       "reflective",
       "calm"
     ],
-    "sentiment_score": 0.046,
+    "sentiment_score": 0.016,
     "weather_metaphor": "steady atmosphere with quiet optimism",
     "momentum": "and steady",
     "momentum_icon": "→",
-    "sample_size": 35,
-    "last_updated": "2025-05-24T09:51:34.776Z",
+    "sample_size": 39,
+    "last_updated": "2025-05-24T10:04:05.853Z",
     "data_source": "enhanced_simulation"
   },
   "usa": {
     "region": "usa",
     "date": "2025-05-24",
-    "time": "09:51:38",
+    "time": "10:04:09",
     "dominant_emotions": [
       "frustrated",
       "hopeful"
     ],
-    "sentiment_score": -0.081,
+    "sentiment_score": -0.131,
     "weather_metaphor": "turbulent weather with clearing patches",
     "momentum": "and slowly shifting",
     "momentum_icon": "↘️",
-    "sample_size": 43,
-    "last_updated": "2025-05-24T09:51:38.372Z",
+    "sample_size": 39,
+    "last_updated": "2025-05-24T10:04:09.402Z",
     "data_source": "enhanced_simulation"
   },
   "canada": {
     "region": "canada",
     "date": "2025-05-24",
-    "time": "09:51:41",
+    "time": "10:04:12",
     "dominant_emotions": [
-      "contemplative",
-      "hopeful"
+      "reflective",
+      "calm"
     ],
-    "sentiment_score": 0.082,
-    "weather_metaphor": "partly cloudy with rays of hope",
-    "momentum": "and gently improving",
-    "momentum_icon": "↗️",
-    "sample_size": 26,
-    "last_updated": "2025-05-24T09:51:41.933Z",
+    "sentiment_score": 0.038,
+    "weather_metaphor": "steady atmosphere with quiet optimism",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 47,
+    "last_updated": "2025-05-24T10:04:12.937Z",
     "data_source": "enhanced_simulation"
   },
   "australia-nz": {
     "region": "australia-nz",
     "date": "2025-05-24",
-    "time": "09:51:45",
+    "time": "10:04:16",
     "dominant_emotions": [
-      "curious",
-      "energetic"
+      "contemplative",
+      "hopeful"
     ],
-    "sentiment_score": 0.323,
-    "weather_metaphor": "bright skies with gentle breeze",
-    "momentum": "and brightening",
+    "sentiment_score": 0.141,
+    "weather_metaphor": "partly cloudy with rays of hope",
+    "momentum": "and gently improving",
     "momentum_icon": "↗️",
-    "sample_size": 52,
-    "last_updated": "2025-05-24T09:51:45.320Z",
+    "sample_size": 56,
+    "last_updated": "2025-05-24T10:04:16.474Z",
     "data_source": "enhanced_simulation"
   },
   "europe": {
     "region": "europe",
     "date": "2025-05-24",
-    "time": "09:51:48",
+    "time": "10:04:20",
     "dominant_emotions": [
-      "thoughtful",
-      "resilient"
+      "calm",
+      "practical"
     ],
-    "sentiment_score": 0.187,
-    "weather_metaphor": "stable conditions with gentle warmth",
+    "sentiment_score": 0.165,
+    "weather_metaphor": "clear skies with measured optimism",
     "momentum": "and brightening",
     "momentum_icon": "↗️",
     "sample_size": 45,
-    "last_updated": "2025-05-24T09:51:48.849Z",
+    "last_updated": "2025-05-24T10:04:20.009Z",
     "data_source": "enhanced_simulation"
   },
   "asia": {
     "region": "asia",
     "date": "2025-05-24",
-    "time": "09:51:52",
+    "time": "10:04:23",
     "dominant_emotions": [
-      "reflective",
-      "calm"
+      "contemplative",
+      "hopeful"
     ],
-    "sentiment_score": 0.018,
-    "weather_metaphor": "steady atmosphere with quiet optimism",
-    "momentum": "and steady",
-    "momentum_icon": "→",
-    "sample_size": 57,
-    "last_updated": "2025-05-24T09:51:52.311Z",
+    "sentiment_score": 0.124,
+    "weather_metaphor": "partly cloudy with rays of hope",
+    "momentum": "and gently improving",
+    "momentum_icon": "↗️",
+    "sample_size": 56,
+    "last_updated": "2025-05-24T10:04:23.728Z",
     "data_source": "enhanced_simulation"
   },
   "south-america": {
     "region": "south-america",
     "date": "2025-05-24",
-    "time": "09:51:55",
+    "time": "10:04:27",
     "dominant_emotions": [
       "reflective",
       "calm"
     ],
-    "sentiment_score": 0.098,
+    "sentiment_score": 0.064,
     "weather_metaphor": "steady atmosphere with quiet optimism",
     "momentum": "and gently improving",
     "momentum_icon": "↗️",
-    "sample_size": 30,
-    "last_updated": "2025-05-24T09:51:55.918Z",
+    "sample_size": 18,
+    "last_updated": "2025-05-24T10:04:27.261Z",
     "data_source": "enhanced_simulation"
   }
 }
