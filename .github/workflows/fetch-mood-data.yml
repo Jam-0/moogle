@@ -8,6 +8,9 @@ on:
   push:
     branches: [ main ] # Run on push to test
 
+permissions:
+  contents: write  # This gives the action permission to write to the repository
+
 jobs:
   fetch-mood:
     runs-on: ubuntu-latest
