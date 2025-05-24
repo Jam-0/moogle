@@ -3,318 +3,761 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Skyscraper</title>
+    <title>World Mood Tracker</title>
     <style>
+        /* CSS Variables for Mood Colors */
+        :root {
+            --gradient-joy: linear-gradient(135deg, #FFD93D 0%, #FFB84D 50%, #F39C12 100%);
+            --gradient-sad: linear-gradient(135deg, #5C7CFA 0%, #748FFC 50%, #91A7FF 100%);
+            --gradient-angry: linear-gradient(135deg, #FF6B6B 0%, #FA5252 50%, #E03131 100%);
+            --gradient-calm: linear-gradient(135deg, #51CF66 0%, #69DB7C 50%, #8CE99A 100%);
+            --gradient-neutral: linear-gradient(135deg, #ADB5BD 0%, #868E96 50%, #495057 100%);
+            --gradient-anxious: linear-gradient(135deg, #845EF7 0%, #9775FA 50%, #B197FC 100%);
+            
+            --pulse-duration: 3s;
+            --transition-duration: 1.5s;
+        }
+
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: #1a1a2e;
-            color: white;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-        
-        h1 {
-            margin-bottom: 20px;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-        
-        .dropdown-container {
-            margin-bottom: 30px;
-        }
-        
-        select {
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 5px;
-            background-color: #333;
-            color: white;
-            border: 2px solid #555;
-            cursor: pointer;
-        }
-        
-        .skyscraper {
-            position: relative;
-            width: 400px;
-            background-color: #0f3460;
-            border: 4px solid #16213e;
-            border-radius: 10px 10px 0 0;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7), 10px 10px 0 rgba(0, 0, 0, 0.2);
-            padding: 10px;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .roof {
-            position: absolute;
-            top: -20px;
-            left: 0;
-            width: 100%;
-            height: 20px;
-            background-color: #e94560;
-            border-radius: 10px 10px 0 0;
-        }
-        
-        .base {
-            width: 450px;
-            height: 20px;
-            background-color: #16213e;
-            border-radius: 0 0 10px 10px;
-        }
-        
-        .cat-window {
-            width: 80px;
-            height: 80px;
-            background-color: #533483;
-            border: 3px solid #e94560;
-            border-radius: 5px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-        
-        .cat-window:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(233, 69, 96, 0.7);
-            z-index: 10;
-        }
-        
-        .cat-window img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        /* Style for the clickable windows */
-        .clickable-window {
-            cursor: pointer;
-            position: relative;
-        }
-        
-        .clickable-window.isopaint::after {
-            content: 'IsoPaint';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(233, 69, 96, 0.8);
-            color: white;
-            text-align: center;
-            padding: 3px 0;
-            font-size: 12px;
-            font-weight: bold;
+            background: var(--gradient-neutral);
+            transition: background var(--transition-duration) ease;
+            overflow-x: hidden;
         }
 
-        .clickable-window.europe-map::after {
-            content: 'WIKI timeline';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(83, 52, 131, 0.8);
-            color: white;
-            text-align: center;
-            padding: 3px 0;
-            font-size: 12px;
-            font-weight: bold;
-        }
+        /* Mood-based Background Classes */
+        body.mood-joy { background: var(--gradient-joy); }
+        body.mood-sad { background: var(--gradient-sad); }
+        body.mood-angry { background: var(--gradient-angry); }
+        body.mood-calm { background: var(--gradient-calm); }
+        body.mood-anxious { background: var(--gradient-anxious); }
 
-        .clickable-window.snake-game::after {
-            content: 'Cricket Snake';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(0, 255, 65, 0.8);
-            color: white;
-            text-align: center;
-            padding: 3px 0;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .clickable-window.world-mood::after {
-            content: 'World Mood';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: rgba(255, 215, 0, 0.8);
-            color: black;
-            text-align: center;
-            padding: 3px 0;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        /* Add some random lights to make it look like a building at night */
-        .skyscraper::before {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
+        /* Pulse Animation Overlay */
+        .pulse-overlay {
+            position: fixed;
             top: 0;
             left: 0;
-            background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-                        radial-gradient(circle at 30% 60%, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-                        radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-            background-size: 100px 100px;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);
+            opacity: 0;
+            animation: pulse var(--pulse-duration) ease-in-out infinite;
             pointer-events: none;
             z-index: 1;
         }
+
+        /* Different Pulse Speeds for Different Emotions */
+        body.mood-joy .pulse-overlay { --pulse-duration: 1.5s; }
+        body.mood-sad .pulse-overlay { --pulse-duration: 4s; }
+        body.mood-angry .pulse-overlay { --pulse-duration: 1s; }
+        body.mood-calm .pulse-overlay { --pulse-duration: 3s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0; transform: scale(0.8); }
+            50% { opacity: 0.3; transform: scale(1.2); }
+        }
+
+        /* Header */
+        header {
+            position: relative;
+            z-index: 10;
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 0.1em;
+        }
+
+        /* Region Selector */
+        .region-selector {
+            position: relative;
+        }
+
+        .region-selector select {
+            appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 0.5rem 2rem 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .region-selector select:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .region-selector::after {
+            content: '▼';
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            pointer-events: none;
+            font-size: 0.7rem;
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Mood Statement */
+        .mood-statement {
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .mood-text {
+            font-size: clamp(2rem, 8vw, 5rem);
+            font-weight: 300;
+            line-height: 1.2;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 1rem;
+            transition: all var(--transition-duration) ease;
+        }
+
+        /* Variable Font Weight Based on Mood */
+        body.mood-joy .mood-text { font-weight: 400; }
+        body.mood-sad .mood-text { font-weight: 200; }
+        body.mood-angry .mood-text { font-weight: 600; }
+        body.mood-calm .mood-text { font-weight: 300; }
+
+        .mood-region {
+            font-weight: 400;
+            text-decoration: underline;
+            text-decoration-color: rgba(255, 255, 255, 0.3);
+            text-decoration-thickness: 1px;
+            text-underline-offset: 0.2em;
+        }
+
+        /* Momentum Indicator */
+        .momentum {
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .momentum-icon {
+            font-size: 2rem;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Time Selector */
+        .time-selector {
+            margin-top: 3rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .time-option {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .time-option:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .time-option.active {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Comparison Mode */
+        .comparison-toggle {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 0.75rem 1.5rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .comparison-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Footer */
+        footer {
+            position: relative;
+            z-index: 10;
+            padding: 1rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+        }
+
+        .last-updated {
+            margin-top: 0.5rem;
+        }
+
+        /* Loading State */
+        .loading {
+            display: none;
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .mood-text {
+                font-size: clamp(1.5rem, 6vw, 3rem);
+            }
+
+            .time-selector {
+                gap: 0.5rem;
+            }
+
+            .time-option {
+                padding: 0.4rem 1rem;
+                font-size: 0.8rem;
+            }
+
+            .comparison-toggle {
+                bottom: 1rem;
+                right: 1rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            .pulse-overlay,
+            .momentum-icon {
+                animation: none;
+            }
+
+            body,
+            .mood-text {
+                transition: none;
+            }
+        }
+
+        /* High Contrast Mode */
+        @media (prefers-contrast: high) {
+            body {
+                background: #000;
+            }
+
+            .mood-text,
+            .momentum {
+                color: #fff;
+            }
+
+            header,
+            .region-selector select,
+            .time-option,
+            .comparison-toggle {
+                background: #222;
+                border-color: #fff;
+            }
+        }
     </style>
 </head>
-<body>
-    <h1>Cat Skyscraper</h1>
+<body class="mood-neutral">
+    <div class="pulse-overlay"></div>
     
-    <div class="dropdown-container">
-        <select id="cat-selector">
-            <option value="0">Select number of cats</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
-            <option value="11">11</option>
-            <option value="12">12</option>
-            <option value="13">13</option>
-            <option value="14">14</option>
-            <option value="15">15</option>
-            <option value="16">16</option>
-        </select>
-    </div>
-    
-    <div class="skyscraper" id="skyscraper">
-        <div class="roof"></div>
-        <!-- Cat windows will be inserted here -->
-    </div>
-    <div class="base"></div>
+    <header>
+        <h1 class="logo">WORLD MOOD</h1>
+        <div class="region-selector">
+            <select id="region-select" aria-label="Select region">
+                <option value="world">World</option>
+                <option value="usa">USA</option>
+                <option value="canada">Canada</option>
+                <option value="australia-nz">Australia/NZ</option>
+                <option value="europe">Europe</option>
+                <option value="asia">Asia</option>
+                <option value="south-america">South America</option>
+            </select>
+        </div>
+    </header>
+
+    <main>
+        <div class="mood-statement">
+            <p class="mood-text">
+                The mood of <span class="mood-region">the World</span> today is 
+                <span class="mood-description">loading...</span>
+            </p>
+            <div class="momentum">
+                <span class="momentum-icon">→</span>
+                <span class="momentum-text">and steady</span>
+            </div>
+        </div>
+
+        <div class="time-selector">
+            <button class="time-option active" data-time="day">Today</button>
+            <button class="time-option" data-time="morning">Morning</button>
+            <button class="time-option" data-time="afternoon">Afternoon</button>
+            <button class="time-option" data-time="evening">Evening</button>
+            <button class="time-option" data-time="night">Night</button>
+        </div>
+
+        <div class="loading">Analyzing emotions...</div>
+    </main>
+
+    <button class="comparison-toggle">Compare Regions</button>
+
+    <footer>
+        <p>&copy; 2024 World Mood Tracker</p>
+        <p class="last-updated">Last updated: <span id="update-time">--</span></p>
+    </footer>
 
     <script>
-        // Array of cat image URLs
-        const catImageUrls = [
-            "https://i.imgur.com/igBl39O.jpeg",
-            "https://i.imgur.com/QdvkUNh.jpeg",
-            "https://i.imgur.com/27uMxU9.jpeg",
-            "https://i.imgur.com/Y8pFjf1.jpeg",
-            "https://i.imgur.com/p3z7ABZ.jpeg",
-            "https://i.imgur.com/sXwlMDb.jpeg",
-            "https://i.imgur.com/oECVnkC.jpeg",
-            "https://i.imgur.com/ETweITC.jpeg",
-            "https://i.imgur.com/TuRFhFo.jpeg",
-            "https://i.imgur.com/sDpxRNh.jpeg",
-            "https://i.imgur.com/EnE6Eji.jpeg",
-            "https://i.imgur.com/tweR3qX.jpeg",
-            "https://i.imgur.com/DHACYbl.jpeg",
-            "https://i.imgur.com/9axY4Jf.jpeg",
-            "https://i.imgur.com/leLLRTy.jpeg",
-            "https://i.imgur.com/6WVd2k0.jpeg"
-        ];
+        // World Mood Tracker - Main JavaScript
+        class WorldMoodTracker {
+            constructor() {
+                this.currentRegion = 'world';
+                this.currentTime = 'day';
+                this.comparisonMode = false;
+                this.comparisonRegions = [];
+                this.moodCache = new Map();
+                this.moodData = null;
+                this.initializeDB();
+                this.initializeEventListeners();
+                this.loadInitialData();
+            }
 
-        document.getElementById('cat-selector').addEventListener('change', function() {
-            const numberOfCats = parseInt(this.value);
-            const skyscraper = document.getElementById('skyscraper');
-            
-            // Clear previous images
-            skyscraper.innerHTML = '';
-            
-            // Add the roof back
-            const roof = document.createElement('div');
-            roof.className = 'roof';
-            skyscraper.appendChild(roof);
-            
-            // Add the selected number of cat windows
-            for (let i = 0; i < numberOfCats; i++) {
-                if (i === 0) {
-                    // First window is a link to IsoPaint.html
-                    const linkWindow = document.createElement('a');
-                    linkWindow.href = 'IsoPaint.html';
+            // Initialize IndexedDB for caching
+            async initializeDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('WorldMoodDB', 1);
                     
-                    const catWindow = document.createElement('div');
-                    catWindow.className = 'cat-window clickable-window isopaint';
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        resolve();
+                    };
                     
-                    const img = document.createElement('img');
-                    img.src = catImageUrls[0];
-                    img.alt = 'IsoPaint';
-                    
-                    catWindow.appendChild(img);
-                    linkWindow.appendChild(catWindow);
-                    skyscraper.appendChild(linkWindow);
-                } else if (i === 1) {
-                    // Second window is a link to europetimemap.html
-                    const linkWindow = document.createElement('a');
-                    linkWindow.href = 'europetimemap.html';
-                    
-                    const catWindow = document.createElement('div');
-                    catWindow.className = 'cat-window clickable-window europe-map';
-                    
-                    const img = document.createElement('img');
-                    img.src = catImageUrls[1];
-                    img.alt = 'Europe Time Map';
-                    
-                    catWindow.appendChild(img);
-                    linkWindow.appendChild(catWindow);
-                    skyscraper.appendChild(linkWindow);
-                } else if (i === 2) {
-                    // Third window is a link to csnake.html
-                    const linkWindow = document.createElement('a');
-                    linkWindow.href = 'csnake.html';
-                    
-                    const catWindow = document.createElement('div');
-                    catWindow.className = 'cat-window clickable-window snake-game';
-                    
-                    const img = document.createElement('img');
-                    img.src = catImageUrls[2];
-                    img.alt = 'Cricket Snake';
-                    
-                    catWindow.appendChild(img);
-                    linkWindow.appendChild(catWindow);
-                    skyscraper.appendChild(linkWindow);
-                } else if (i === 3) {
-                    // Fourth window is World Mood Tracker
-                    const linkWindow = document.createElement('a');
-                    linkWindow.href = 'world-mood-tracker.html';
-                    
-                    const catWindow = document.createElement('div');
-                    catWindow.className = 'cat-window clickable-window world-mood';
-                    
-                    const img = document.createElement('img');
-                    img.src = catImageUrls[3];
-                    img.alt = 'World Mood';
-                    
-                    catWindow.appendChild(img);
-                    linkWindow.appendChild(catWindow);
-                    skyscraper.appendChild(linkWindow);
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('moods')) {
+                            db.createObjectStore('moods', { keyPath: 'id' });
+                        }
+                    };
+                });
+            }
+
+            // Initialize event listeners
+            initializeEventListeners() {
+                // Region selector
+                document.getElementById('region-select').addEventListener('change', (e) => {
+                    this.currentRegion = e.target.value;
+                    this.fetchAndUpdateMood();
+                });
+
+                // Time selectors
+                document.querySelectorAll('.time-option').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        document.querySelectorAll('.time-option').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentTime = e.target.dataset.time;
+                        this.fetchAndUpdateMood();
+                    });
+                });
+
+                // Comparison mode toggle
+                document.querySelector('.comparison-toggle').addEventListener('click', () => {
+                    this.toggleComparisonMode();
+                });
+            }
+
+            // Load initial data
+            async loadInitialData() {
+                // Try to load real data from JSON file
+                try {
+                    const response = await fetch('mood-data.json');
+                    if (response.ok) {
+                        this.moodData = await response.json();
+                        console.log('Loaded real mood data:', this.moodData);
+                    }
+                } catch (error) {
+                    console.log('No mood-data.json found, using mock data');
+                }
+                
+                await this.fetchAndUpdateMood();
+                this.updateLastUpdatedTime();
+            }
+
+            // Fetch mood data (with caching)
+            async fetchMoodData(region, time = 'day') {
+                // If we have real data, use it
+                if (this.moodData && this.moodData[region]) {
+                    return this.formatMoodData(this.moodData[region], region);
+                }
+
+                // Otherwise, use mock data
+                return this.mockFetchMoodAPI(region, time);
+            }
+
+            // Format mood data from JSON
+            formatMoodData(data, region) {
+                return {
+                    region: this.formatRegionName(region),
+                    date: data.date || new Date().toISOString().split('T')[0],
+                    time: this.currentTime,
+                    dominant_emotions: data.dominant_emotions || ['neutral'],
+                    sentiment_score: data.sentiment_score || 0,
+                    weather_metaphor: data.weather_metaphor || 'conditions unclear',
+                    momentum: data.momentum || 'steady',
+                    momentum_icon: data.momentum_icon || '→',
+                    comparison_yesterday: 0,
+                    sample_size: data.sample_size || 0,
+                    last_updated: data.last_updated
+                };
+            }
+
+            // Mock API call (to be replaced with actual Bluesky integration)
+            async mockFetchMoodAPI(region, time) {
+                // Simulate network delay
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Generate mock data based on region and time
+                const moods = {
+                    'world': {
+                        'day': {
+                            dominant_emotions: ['contemplative', 'hopeful'],
+                            sentiment_score: 0.62,
+                            weather_metaphor: 'partly cloudy with rays of sunshine',
+                            momentum: 'brightening',
+                            comparison_yesterday: 0.15
+                        },
+                        'morning': {
+                            dominant_emotions: ['energetic', 'optimistic'],
+                            sentiment_score: 0.75,
+                            weather_metaphor: 'bright sunrise with morning dew',
+                            momentum: 'brightening',
+                            comparison_yesterday: 0.20
+                        }
+                    },
+                    'usa': {
+                        'day': {
+                            dominant_emotions: ['anxious', 'determined'],
+                            sentiment_score: 0.45,
+                            weather_metaphor: 'variable clouds with occasional thunder',
+                            momentum: 'darkening',
+                            comparison_yesterday: -0.12
+                        }
+                    },
+                    'europe': {
+                        'day': {
+                            dominant_emotions: ['calm', 'thoughtful'],
+                            sentiment_score: 0.68,
+                            weather_metaphor: 'mild with gentle breeze',
+                            momentum: 'steady',
+                            comparison_yesterday: 0.02
+                        }
+                    },
+                    'asia': {
+                        'day': {
+                            dominant_emotions: ['busy', 'hopeful'],
+                            sentiment_score: 0.70,
+                            weather_metaphor: 'clear skies with bustling energy',
+                            momentum: 'brightening',
+                            comparison_yesterday: 0.08
+                        }
+                    }
+                };
+
+                const defaultMood = {
+                    dominant_emotions: ['neutral', 'steady'],
+                    sentiment_score: 0.50,
+                    weather_metaphor: 'overcast but stable',
+                    momentum: 'steady',
+                    comparison_yesterday: 0
+                };
+
+                return {
+                    region: this.formatRegionName(region),
+                    date: new Date().toISOString().split('T')[0],
+                    time: time,
+                    ...(moods[region]?.[time] || moods[region]?.['day'] || defaultMood)
+                };
+            }
+
+            // Fetch and update mood display
+            async fetchAndUpdateMood() {
+                const data = await this.fetchMoodData(this.currentRegion, this.currentTime);
+                this.updateMoodDisplay(data);
+            }
+
+            // Update mood display
+            updateMoodDisplay(data) {
+                // Update text content
+                document.querySelector('.mood-region').textContent = data.region;
+                document.querySelector('.mood-description').textContent = data.weather_metaphor;
+                
+                // Update momentum
+                const momentumIcon = document.querySelector('.momentum-icon');
+                const momentumText = document.querySelector('.momentum-text');
+                
+                if (data.comparison_yesterday > 0.1) {
+                    momentumIcon.textContent = '↗️';
+                    momentumText.textContent = 'and brightening';
+                } else if (data.comparison_yesterday < -0.1) {
+                    momentumIcon.textContent = '↘️';
+                    momentumText.textContent = 'and darkening';
                 } else {
-                    // Regular cat windows
-                    const catWindow = document.createElement('div');
-                    catWindow.className = 'cat-window';
-                    
-                    const img = document.createElement('img');
-                    img.src = catImageUrls[i % catImageUrls.length];
-                    img.alt = `Cat ${i+1}`;
-                    
-                    catWindow.appendChild(img);
-                    skyscraper.appendChild(catWindow);
+                    momentumIcon.textContent = '→';
+                    momentumText.textContent = 'and steady';
+                }
+
+                // Update body class for mood styling
+                const primaryEmotion = data.dominant_emotions[0];
+                document.body.className = '';
+                
+                if (['joy', 'happy', 'optimistic', 'energetic', 'hopeful'].some(e => primaryEmotion.includes(e))) {
+                    document.body.classList.add('mood-joy');
+                } else if (['sad', 'melancholic', 'gloomy'].some(e => primaryEmotion.includes(e))) {
+                    document.body.classList.add('mood-sad');
+                } else if (['angry', 'frustrated', 'agitated'].some(e => primaryEmotion.includes(e))) {
+                    document.body.classList.add('mood-angry');
+                } else if (['calm', 'peaceful', 'serene', 'thoughtful'].some(e => primaryEmotion.includes(e))) {
+                    document.body.classList.add('mood-calm');
+                } else if (['anxious', 'worried', 'nervous', 'fear'].some(e => primaryEmotion.includes(e))) {
+                    document.body.classList.add('mood-anxious');
+                } else {
+                    document.body.classList.add('mood-neutral');
                 }
             }
-            
-            // Adjust skyscraper height based on number of cats
-            // Each row has 4 windows
-            const rows = Math.ceil(numberOfCats / 4);
-            const heightPerRow = 100; // 80px height + 10px gap + 10px padding
-            skyscraper.style.height = (rows * heightPerRow) + 'px';
+
+            // Toggle comparison mode
+            async toggleComparisonMode() {
+                this.comparisonMode = !this.comparisonMode;
+                
+                if (this.comparisonMode) {
+                    // Create comparison UI
+                    this.createComparisonUI();
+                } else {
+                    // Remove comparison UI
+                    this.removeComparisonUI();
+                    this.fetchAndUpdateMood();
+                }
+            }
+
+            // Create comparison UI
+            createComparisonUI() {
+                const moodStatement = document.querySelector('.mood-statement');
+                
+                // Create comparison selectors
+                const comparisonHTML = `
+                    <div class="comparison-container" style="margin-top: 2rem;">
+                        <p style="color: rgba(255,255,255,0.8); margin-bottom: 1rem;">Compare moods between regions:</p>
+                        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                            <select id="compare-region-1" class="region-selector" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); padding: 0.5rem 1rem; border-radius: 2rem;">
+                                <option value="usa">USA</option>
+                                <option value="canada">Canada</option>
+                                <option value="europe">Europe</option>
+                                <option value="asia">Asia</option>
+                            </select>
+                            <span style="color: rgba(255,255,255,0.8);">vs</span>
+                            <select id="compare-region-2" class="region-selector" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.9); padding: 0.5rem 1rem; border-radius: 2rem;">
+                                <option value="europe">Europe</option>
+                                <option value="asia">Asia</option>
+                                <option value="usa">USA</option>
+                                <option value="canada">Canada</option>
+                            </select>
+                        </div>
+                        <div id="comparison-result" style="margin-top: 2rem; font-size: 1.5rem; color: rgba(255,255,255,0.9);"></div>
+                    </div>
+                `;
+                
+                moodStatement.insertAdjacentHTML('afterend', comparisonHTML);
+                
+                // Add event listeners
+                document.getElementById('compare-region-1').addEventListener('change', () => this.updateComparison());
+                document.getElementById('compare-region-2').addEventListener('change', () => this.updateComparison());
+                
+                this.updateComparison();
+            }
+
+            // Update comparison
+            async updateComparison() {
+                const region1 = document.getElementById('compare-region-1').value;
+                const region2 = document.getElementById('compare-region-2').value;
+                
+                const [data1, data2] = await Promise.all([
+                    this.fetchMoodData(region1, this.currentTime),
+                    this.fetchMoodData(region2, this.currentTime)
+                ]);
+                
+                const comparisonResult = document.getElementById('comparison-result');
+                const diff = data1.sentiment_score - data2.sentiment_score;
+                
+                let comparisonText = '';
+                if (Math.abs(diff) < 0.1) {
+                    comparisonText = `Both ${data1.region} and ${data2.region} share a similar ${data1.dominant_emotions[0]} mood today`;
+                } else if (diff > 0) {
+                    comparisonText = `Today, ${data1.region} feels more ${data1.dominant_emotions[0]} than ${data2.region}, which is notably ${data2.dominant_emotions[0]}`;
+                } else {
+                    comparisonText = `Today, ${data2.region} feels more ${data2.dominant_emotions[0]} than ${data1.region}, which is notably ${data1.dominant_emotions[0]}`;
+                }
+                
+                comparisonResult.textContent = comparisonText;
+            }
+
+            // Remove comparison UI
+            removeComparisonUI() {
+                const comparisonContainer = document.querySelector('.comparison-container');
+                if (comparisonContainer) {
+                    comparisonContainer.remove();
+                }
+            }
+
+            // Helper functions
+            formatRegionName(region) {
+                const names = {
+                    'world': 'the World',
+                    'usa': 'USA',
+                    'canada': 'Canada',
+                    'australia-nz': 'Australia/NZ',
+                    'europe': 'Europe',
+                    'asia': 'Asia',
+                    'south-america': 'South America'
+                };
+                return names[region] || region;
+            }
+
+            showLoading(show) {
+                const loading = document.querySelector('.loading');
+                loading.classList.toggle('active', show);
+            }
+
+            updateLastUpdatedTime() {
+                // If we have real data with a last_updated timestamp, use it
+                if (this.moodData && this.moodData.world && this.moodData.world.last_updated) {
+                    const lastUpdated = new Date(this.moodData.world.last_updated);
+                    document.getElementById('update-time').textContent = 
+                        lastUpdated.toLocaleString();
+                } else {
+                    // Fall back to yesterday at 11:59 PM
+                    const now = new Date();
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    yesterday.setHours(23, 59, 0, 0);
+                    
+                    document.getElementById('update-time').textContent = 
+                        yesterday.toLocaleDateString() + ' at 11:59 PM';
+                }
+            }
+
+            getFallbackData(region) {
+                return {
+                    region: this.formatRegionName(region),
+                    date: new Date().toISOString().split('T')[0],
+                    dominant_emotions: ['steady', 'neutral'],
+                    sentiment_score: 0.5,
+                    weather_metaphor: 'conditions unclear, awaiting data',
+                    momentum: 'steady',
+                    comparison_yesterday: 0
+                };
+            }
+
+            // IndexedDB helpers
+            async saveToDB(key, data) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['moods'], 'readwrite');
+                    const store = transaction.objectStore('moods');
+                    const request = store.put({
+                        id: key,
+                        data: data,
+                        timestamp: Date.now()
+                    });
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async getFromDB(key) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['moods'], 'readonly');
+                    const store = transaction.objectStore('moods');
+                    const request = store.get(key);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            window.moodTracker = new WorldMoodTracker();
         });
+    </script>
+
+    <!-- Load the emotion analysis components -->
+    <script src="emotion-analyzer.js"></script>
+    <script src="weather-metaphor-generator.js"></script>
+    <script src="bluesky-api-integration.js"></script>
+
+    <!-- Initialize with mock data for now -->
+    <script>
+        // For now, we'll use mock data since we need backend processing
+        // The full integration would use the complete-integration.js with a backend
+        console.log('World Mood Tracker loaded - showing demo data');
     </script>
 </body>
 </html>
