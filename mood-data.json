@@ -1,0 +1,100 @@
+{
+  "world": {
+    "region": "world",
+    "date": "2025-05-24",
+    "time": "05:06:53",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "partly cloudy and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T05:06:53.137Z"
+  },
+  "usa": {
+    "region": "usa",
+    "date": "2025-05-24",
+    "time": "05:06:54",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "mild conditions and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T05:06:54.665Z"
+  },
+  "canada": {
+    "region": "canada",
+    "date": "2025-05-24",
+    "time": "05:06:56",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "partly cloudy and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T05:06:56.196Z"
+  },
+  "australia-nz": {
+    "region": "australia-nz",
+    "date": "2025-05-24",
+    "time": "05:06:57",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "partly cloudy and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T05:06:57.725Z"
+  },
+  "europe": {
+    "region": "europe",
+    "date": "2025-05-24",
+    "time": "05:06:59",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "mild conditions and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T05:06:59.251Z"
+  },
+  "asia": {
+    "region": "asia",
+    "date": "2025-05-24",
+    "time": "05:07:00",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "partly cloudy and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T05:07:00.783Z"
+  },
+  "south-america": {
+    "region": "south-america",
+    "date": "2025-05-24",
+    "time": "05:07:02",
+    "dominant_emotions": [
+      "neutral"
+    ],
+    "sentiment_score": 0,
+    "weather_metaphor": "steady weather and holding steady",
+    "momentum": "and steady",
+    "momentum_icon": "→",
+    "sample_size": 0,
+    "last_updated": "2025-05-24T05:07:02.314Z"
+  }
+}
