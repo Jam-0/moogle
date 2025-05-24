@@ -41,5 +41,13 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add mood-data.json
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Update mood data [skip ci]" && git push)
+        
+        # Check if mood-data.json has actually changed
+        if git diff --quiet HEAD -- mood-data.json; then
+          echo "No changes to mood-data.json"
+        else
+          echo "Changes detected in mood-data.json, committing..."
+          git add mood-data.json
+          git commit -m "Update mood data [skip ci]"
+          git push
+        fi
