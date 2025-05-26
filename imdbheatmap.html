@@ -282,6 +282,20 @@
             gap: 8px;
         }
 
+        .heatmap-cell.low-votes {
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .heatmap-cell.low-votes::after {
+            content: '*';
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            font-size: 0.7em;
+            opacity: 0.6;
+        }
+
         .legend-color {
             width: 30px;
             height: 20px;
@@ -428,17 +442,29 @@
         async function getTMDBEpisodeRating(tmdbShowId, season, episode) {
             try {
                 const episodeUrl = `${TMDB_BASE_URL}/tv/${tmdbShowId}/season/${season}/episode/${episode}?api_key=${TMDB_API_KEY}`;
+                console.log(`Fetching TMDB episode S${season}E${episode}: ${episodeUrl}`);
+                
                 const response = await fetch(episodeUrl);
+                
+                if (!response.ok) {
+                    console.error(`TMDB episode fetch failed: ${response.status} ${response.statusText}`);
+                    return 'N/A';
+                }
+                
                 const data = await response.json();
                 
-                if (data.vote_average && data.vote_count >= 10) {
-                    // Only use rating if there are at least 10 votes
-                    return data.vote_average.toFixed(1);
+                if (data.vote_average && data.vote_count > 0) {
+                    // Accept any rating with at least 1 vote, but track the source
+                    const rating = data.vote_average.toFixed(1);
+                    console.log(`TMDB episode S${season}E${episode}: Rating ${rating} (${data.vote_count} votes)`);
+                    return { rating, votes: data.vote_count, source: 'tmdb' };
+                } else {
+                    console.log(`TMDB episode S${season}E${episode}: No votes`);
                 }
-                return 'N/A';
+                return null;
             } catch (error) {
-                console.error('TMDB episode fetch error:', error);
-                return 'N/A';
+                console.error(`TMDB episode fetch error for S${season}E${episode}:`, error);
+                return null;
             }
         }
 
@@ -451,7 +477,7 @@
                 const batch = episodes.slice(i, i + batchSize);
                 const batchPromises = batch.map(ep => 
                     getTMDBEpisodeRating(tmdbShowId, ep.season, ep.episode)
-                        .then(rating => ({ ...ep, rating }))
+                        .then(result => ({ ...ep, ...(result || {}) }))
                 );
                 
                 const batchResults = await Promise.all(batchPromises);
@@ -516,6 +542,7 @@
                 const validSeasons = [];
                 let tmdbShowId = null;
                 const allEpisodesNeedingTMDB = [];
+                let tmdbSuccessCount = 0;
 
                 resultsDiv.innerHTML = `<div class="loading">Loading ${totalSeasons} seasons</div>`;
 
@@ -536,6 +563,8 @@
                         for (const episode of episodes) {
                             const episodeNum = parseInt(episode.Episode);
                             const rating = episode.imdbRating;
+                            
+                            console.log(`S${season}E${episodeNum}: OMDB rating = ${rating}`);
                             
                             seasonsData[season][episodeNum] = {
                                 rating: rating,
@@ -577,14 +606,20 @@
                         const tmdbResults = await batchFetchTMDBRatings(tmdbShowId, allEpisodesNeedingTMDB);
                         
                         // Update ratings with TMDB data
-                        let tmdbSuccessCount = 0;
+                        tmdbSuccessCount = 0;
+                        let lowVoteCount = 0;
                         for (const result of tmdbResults) {
-                            if (result.rating !== 'N/A') {
+                            if (result.rating) {
                                 seasonsData[result.season][result.episode].rating = result.rating;
+                                seasonsData[result.season][result.episode].source = 'tmdb';
+                                seasonsData[result.season][result.episode].votes = result.votes;
                                 tmdbSuccessCount++;
+                                if (result.votes < 10) {
+                                    lowVoteCount++;
+                                }
                             }
                         }
-                        console.log(`TMDB provided ${tmdbSuccessCount} additional ratings`);
+                        console.log(`TMDB provided ${tmdbSuccessCount} additional ratings (${lowVoteCount} with <10 votes)`);
                     }
                 }
 
@@ -609,6 +644,24 @@
                 }
 
                 // Display the heatmap
+                let totalEpisodes = 0;
+                let ratedEpisodes = 0;
+                for (const season of validSeasons) {
+                    const episodes = Object.values(seasonsData[season]);
+                    totalEpisodes += episodes.length;
+                    ratedEpisodes += episodes.filter(e => e.rating !== 'N/A').length;
+                }
+                
+                // Final summary for debugging
+                console.log('=== Final Data Summary ===');
+                console.log(`Total episodes: ${totalEpisodes}`);
+                console.log(`Rated episodes: ${ratedEpisodes} (${Math.round(ratedEpisodes/totalEpisodes*100)}%)`);
+                console.log(`Missing ratings: ${totalEpisodes - ratedEpisodes}`);
+                if (tmdbShowId) {
+                    console.log(`TMDB search successful - filled ${tmdbSuccessCount} gaps`);
+                }
+                console.log('=======================');
+                
                 displayHeatmap(showTitle, seasonsData, seasonAverages, maxEpisodes, validSeasons);
 
             } catch (error) {
@@ -659,11 +712,14 @@
                         const rating = episodeData.rating;
                         const displayRating = rating !== 'N/A' ? parseFloat(rating).toFixed(1) : '-';
                         const ratingClass = getRatingClass(rating);
-                        html += `<div class="heatmap-cell ${ratingClass}" 
+                        const lowVotes = episodeData.votes && episodeData.votes < 10 ? ' low-votes' : '';
+                        html += `<div class="heatmap-cell ${ratingClass}${lowVotes}" 
                                       data-season="${season}" 
                                       data-episode="${episode}"
                                       data-rating="${rating}"
-                                      data-title="${episodeData.title || ''}">${displayRating}</div>`;
+                                      data-title="${episodeData.title || ''}"
+                                      data-votes="${episodeData.votes || ''}"
+                                      data-source="${episodeData.source || 'omdb'}">${displayRating}</div>`;
                     } else {
                         html += '<div class="heatmap-cell empty"></div>';
                     }
@@ -702,6 +758,9 @@
                             <span>No Rating</span>
                         </div>
                     </div>
+                    <p style="text-align: center; color: #888; font-size: 0.85em; margin-top: 10px;">
+                        * indicates ratings with fewer than 10 votes
+                    </p>
                 </div>
             `;
 
@@ -715,9 +774,15 @@
                     const season = e.target.dataset.season;
                     const episode = e.target.dataset.episode;
                     const rating = e.target.dataset.rating;
+                    const votes = e.target.dataset.votes;
+                    const source = e.target.dataset.source;
                     
                     if (title) {
-                        tooltip.innerHTML = `S${season}E${episode}: ${title}<br>Rating: ${rating}`;
+                        let tooltipText = `S${season}E${episode}: ${title}<br>Rating: ${rating}`;
+                        if (source === 'tmdb') {
+                            tooltipText += ` (TMDB${votes ? `, ${votes} votes` : ''})`;
+                        }
+                        tooltip.innerHTML = tooltipText;
                         tooltip.classList.add('show');
                     }
                 });
