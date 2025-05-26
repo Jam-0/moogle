@@ -385,6 +385,8 @@
 
         async function searchTMDBShow(showName) {
             try {
+                console.log(`Searching TMDB for: ${showName}`);
+                
                 // Extract year if present (e.g., "The Office (2005)" -> "The Office", "2005")
                 const yearMatch = showName.match(/^(.+?)\s*\((\d{4})\)$/);
                 let searchQuery = showName;
@@ -400,13 +402,22 @@
                     searchUrl += `&first_air_date_year=${year}`;
                 }
                 
+                console.log(`TMDB Search URL: ${searchUrl}`);
                 const response = await fetch(searchUrl);
+                console.log(`TMDB Search Response Status: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`TMDB API error: ${response.status} ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log(`TMDB Search Results:`, data);
                 
                 if (data.results && data.results.length > 0) {
-                    // Return the first matching show
+                    console.log(`Found TMDB show: ${data.results[0].name} (ID: ${data.results[0].id})`);
                     return data.results[0].id;
                 }
+                console.log('No TMDB results found');
                 return null;
             } catch (error) {
                 console.error('TMDB search error:', error);
@@ -541,17 +552,22 @@
                 }
 
                 // Fetch TMDB ratings if needed
+                console.log(`Total episodes needing TMDB: ${allEpisodesNeedingTMDB.length}`);
                 if (allEpisodesNeedingTMDB.length > 0) {
                     resultsDiv.innerHTML = `<div class="loading">Fetching additional ratings</div>`;
                     
                     // Check cache or search for TMDB show ID
                     if (tmdbShowCache[showTitle]) {
                         tmdbShowId = tmdbShowCache[showTitle];
+                        console.log(`Using cached TMDB ID: ${tmdbShowId}`);
                     } else {
+                        console.log(`No cached TMDB ID, searching...`);
                         tmdbShowId = await searchTMDBShow(showTitle);
                         if (tmdbShowId) {
                             tmdbShowCache[showTitle] = tmdbShowId;
                             saveCache();
+                        } else {
+                            console.log('Failed to find show on TMDB');
                         }
                     }
                     
