@@ -348,16 +348,112 @@
 
     <script>
         const API_KEY = "68c0d507";
+        const TMDB_API_KEY = "452505076383ea1ca45efbfd8cf9ac67";
+        const TMDB_BASE_URL = "https://api.themoviedb.org/3";
         const resultsDiv = document.getElementById('results');
         const searchBtn = document.getElementById('searchBtn');
         const showInput = document.getElementById('showInput');
         const tooltip = document.getElementById('tooltip');
+        
+        // Cache for TMDB show IDs
+        const tmdbShowCache = {};
+        
+        // Load cache from session storage
+        try {
+            const cached = sessionStorage.getItem('tmdbShowCache');
+            if (cached) {
+                Object.assign(tmdbShowCache, JSON.parse(cached));
+            }
+        } catch (e) {
+            console.error('Cache load error:', e);
+        }
+
+        // Save cache to session storage
+        function saveCache() {
+            try {
+                sessionStorage.setItem('tmdbShowCache', JSON.stringify(tmdbShowCache));
+            } catch (e) {
+                console.error('Cache save error:', e);
+            }
+        }
 
         showInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 searchShow();
             }
         });
+
+        async function searchTMDBShow(showName) {
+            try {
+                // Extract year if present (e.g., "The Office (2005)" -> "The Office", "2005")
+                const yearMatch = showName.match(/^(.+?)\s*\((\d{4})\)$/);
+                let searchQuery = showName;
+                let year = null;
+                
+                if (yearMatch) {
+                    searchQuery = yearMatch[1].trim();
+                    year = yearMatch[2];
+                }
+                
+                let searchUrl = `${TMDB_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchQuery)}`;
+                if (year) {
+                    searchUrl += `&first_air_date_year=${year}`;
+                }
+                
+                const response = await fetch(searchUrl);
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    // Return the first matching show
+                    return data.results[0].id;
+                }
+                return null;
+            } catch (error) {
+                console.error('TMDB search error:', error);
+                return null;
+            }
+        }
+
+        async function getTMDBEpisodeRating(tmdbShowId, season, episode) {
+            try {
+                const episodeUrl = `${TMDB_BASE_URL}/tv/${tmdbShowId}/season/${season}/episode/${episode}?api_key=${TMDB_API_KEY}`;
+                const response = await fetch(episodeUrl);
+                const data = await response.json();
+                
+                if (data.vote_average && data.vote_count >= 10) {
+                    // Only use rating if there are at least 10 votes
+                    return data.vote_average.toFixed(1);
+                }
+                return 'N/A';
+            } catch (error) {
+                console.error('TMDB episode fetch error:', error);
+                return 'N/A';
+            }
+        }
+
+        // Batch fetch TMDB ratings with rate limiting
+        async function batchFetchTMDBRatings(tmdbShowId, episodes) {
+            const results = [];
+            const batchSize = 5; // Process 5 episodes at a time
+            
+            for (let i = 0; i < episodes.length; i += batchSize) {
+                const batch = episodes.slice(i, i + batchSize);
+                const batchPromises = batch.map(ep => 
+                    getTMDBEpisodeRating(tmdbShowId, ep.season, ep.episode)
+                        .then(rating => ({ ...ep, rating }))
+                );
+                
+                const batchResults = await Promise.all(batchPromises);
+                results.push(...batchResults);
+                
+                // Small delay between batches to avoid rate limiting
+                if (i + batchSize < episodes.length) {
+                    await new Promise(resolve => setTimeout(resolve, 250));
+                }
+            }
+            
+            return results;
+        }
 
         function getRatingClass(rating) {
             if (rating === 'N/A' || rating === '-') return 'rating-na';
@@ -407,6 +503,8 @@
                 const seasonAverages = {};
                 let maxEpisodes = 0;
                 const validSeasons = [];
+                let tmdbShowId = null;
+                const allEpisodesNeedingTMDB = [];
 
                 resultsDiv.innerHTML = `<div class="loading">Loading ${totalSeasons} seasons</div>`;
 
@@ -423,9 +521,8 @@
                         const episodes = seasonData.Episodes;
                         seasonsData[season] = {};
 
-                        // Calculate season average
-                        const validRatings = [];
-                        episodes.forEach(episode => {
+                        // Process episodes and collect those needing TMDB
+                        for (const episode of episodes) {
                             const episodeNum = parseInt(episode.Episode);
                             const rating = episode.imdbRating;
                             
@@ -433,19 +530,61 @@
                                 rating: rating,
                                 title: episode.Title
                             };
-
-                            if (rating !== 'N/A') {
-                                validRatings.push(parseFloat(rating));
+                            
+                            if (rating === 'N/A') {
+                                allEpisodesNeedingTMDB.push({ season, episode: episodeNum });
                             }
-                        });
-
-                        if (validRatings.length > 0) {
-                            seasonAverages[season] = (validRatings.reduce((a, b) => a + b, 0) / validRatings.length).toFixed(1);
-                        } else {
-                            seasonAverages[season] = 'N/A';
                         }
 
                         maxEpisodes = Math.max(maxEpisodes, episodes.length);
+                    }
+                }
+
+                // Fetch TMDB ratings if needed
+                if (allEpisodesNeedingTMDB.length > 0) {
+                    resultsDiv.innerHTML = `<div class="loading">Fetching additional ratings</div>`;
+                    
+                    // Check cache or search for TMDB show ID
+                    if (tmdbShowCache[showTitle]) {
+                        tmdbShowId = tmdbShowCache[showTitle];
+                    } else {
+                        tmdbShowId = await searchTMDBShow(showTitle);
+                        if (tmdbShowId) {
+                            tmdbShowCache[showTitle] = tmdbShowId;
+                            saveCache();
+                        }
+                    }
+                    
+                    // Batch fetch all TMDB ratings
+                    if (tmdbShowId) {
+                        console.log(`Fetching ${allEpisodesNeedingTMDB.length} missing ratings from TMDB...`);
+                        const tmdbResults = await batchFetchTMDBRatings(tmdbShowId, allEpisodesNeedingTMDB);
+                        
+                        // Update ratings with TMDB data
+                        let tmdbSuccessCount = 0;
+                        for (const result of tmdbResults) {
+                            if (result.rating !== 'N/A') {
+                                seasonsData[result.season][result.episode].rating = result.rating;
+                                tmdbSuccessCount++;
+                            }
+                        }
+                        console.log(`TMDB provided ${tmdbSuccessCount} additional ratings`);
+                    }
+                }
+
+                // Calculate season averages after all data is collected
+                for (const season of validSeasons) {
+                    const validRatings = [];
+                    Object.values(seasonsData[season]).forEach(episode => {
+                        if (episode.rating !== 'N/A') {
+                            validRatings.push(parseFloat(episode.rating));
+                        }
+                    });
+
+                    if (validRatings.length > 0) {
+                        seasonAverages[season] = (validRatings.reduce((a, b) => a + b, 0) / validRatings.length).toFixed(1);
+                    } else {
+                        seasonAverages[season] = 'N/A';
                     }
                 }
 
